@@ -1,0 +1,22 @@
+window {
+  border-radius: 16px;
+  background-color: rgba(20, 20, 25, 0.80);
+  color: #f5f5f5;
+}
+
+#input {
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin: 8px;
+  background-color: rgba(10, 10, 12, 0.75);
+  border: 1px solid rgba(120, 160, 255, 0.8);
+}
+
+entry:selected, row:selected {
+  background-color: rgba(120, 160, 255, 0.25);
+}
+
+list {
+  padding: 8px;
+}
+

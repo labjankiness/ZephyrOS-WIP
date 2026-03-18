@@ -1,0 +1,76 @@
+# --- Base system ---
+base
+mkinitcpio
+systemd
+
+# --- Kernel & firmware ---
+linux
+linux-firmware # LARGE
+
+# --- Boot & Secure Boot (shim, grub, sbsigntools, mokutil, efitools) ---
+grub
+efibootmgr
+archlinux-shim # AUR
+# Dev/VM-only fallback: if you cannot build shim yet, you can temporarily borrow
+# a Microsoft-signed shim (shimx64.efi) from a Fedora/Ubuntu ISO.
+sbsigntools
+efitools
+mokutil
+
+# --- Wayland & Wayfire stack (wayfire, wf-shell, wlroots, xwayland) ---
+wayland
+wlroots
+wayfire
+wayfire-plugins-extra
+wf-shell
+xorg-server-xwayland
+
+# --- Panel & launcher (wf-panel-pi or waybar, wofi) ---
+wf-panel-pi
+wofi
+
+# --- Display & GPU (mesa, vulkan-radeon, vulkan-intel, virtio drivers) ---
+mesa
+vulkan-radeon
+vulkan-intel
+virglrenderer
+
+# --- Fonts (inter-font or noto-fonts, noto-fonts-emoji) ---
+ttf-inter
+noto-fonts
+noto-fonts-emoji
+
+# --- File manager (thunar, gvfs) ---
+thunar
+gvfs
+
+# --- Terminal (kitty) ---
+kitty
+
+# --- Shell (zsh, zsh-completions) ---
+zsh
+zsh-completions
+
+# --- GTK theming (adw-gtk3, fluent-icon-theme, bibata-cursor-theme) ---
+adw-gtk3 # AUR
+fluent-icon-theme-git # AUR
+bibata-cursor-theme
+
+# --- Audio (pipewire, pipewire-pulse, wireplumber) ---
+pipewire
+pipewire-pulse
+wireplumber
+
+# --- Networking (networkmanager, nm-applet) ---
+networkmanager
+network-manager-applet
+
+# --- Flatpak support ---
+flatpak # LARGE
+xdg-desktop-portal
+xdg-desktop-portal-wlr
+
+# --- VM guest utilities (qemu-guest-agent, spice-vdagent) ---
+qemu-guest-agent
+spice-vdagent
+
