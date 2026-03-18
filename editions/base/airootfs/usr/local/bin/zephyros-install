@@ -1,0 +1,436 @@
+#!/usr/bin/env bash
+#
+# zephyros-install — ZephyrOS System Installer
+#
+# A guided TUI installer using dialog that:
+#   1. Welcomes the user and shows edition info
+#   2. Selects target disk
+#   3. Partitions (EFI 512MB + root)
+#   4. Formats and mounts partitions
+#   5. Installs base system via pacstrap
+#   6. Configures bootloader, locale, timezone, hostname
+#   7. Creates user account
+#   8. Copies edition config and first-boot service
+#   9. Reboots into installed system
+#
+set -euo pipefail
+
+# --- Constants ---
+TITLE="ZephyrOS Installer"
+BACKTITLE="ZephyrOS Installation"
+LOG="/tmp/zephyros-install.log"
+MOUNT_DIR="/mnt"
+
+# --- Edition info from live ISO ---
+CONF="/etc/zephyros-edition.conf"
+EDITION_NAME="core"
+EDITION_LABEL="ZephyrOS Core"
+OLLAMA_MODEL=""
+
+if [ -f "$CONF" ]; then
+    # shellcheck source=/dev/null
+    . "$CONF"
+fi
+
+# --- Utility functions ---
+
+log() {
+    printf '[%s] %s\n' "$(date '+%H:%M:%S')" "$*" >> "$LOG"
+}
+
+die() {
+    dialog --backtitle "$BACKTITLE" --title "Error" \
+        --msgbox "Installation failed:\n\n$1\n\nCheck $LOG for details." 12 60
+    exit 1
+}
+
+run_cmd() {
+    log "Running: $*"
+    if ! "$@" >> "$LOG" 2>&1; then
+        log "FAILED: $*"
+        return 1
+    fi
+}
+
+# --- Check prerequisites ---
+check_root() {
+    if [ "$(id -u)" -ne 0 ]; then
+        echo "Error: This installer must be run as root."
+        echo "Try: sudo zephyros-install"
+        exit 1
+    fi
+}
+
+check_uefi() {
+    if [ ! -d /sys/firmware/efi ]; then
+        dialog --backtitle "$BACKTITLE" --title "UEFI Required" \
+            --msgbox "ZephyrOS requires UEFI boot mode.\n\nPlease restart your machine in UEFI mode and try again." 10 60
+        exit 1
+    fi
+}
+
+check_deps() {
+    for cmd in dialog pacstrap genfstab arch-chroot sgdisk mkfs.fat mkfs.ext4; do
+        if ! command -v "$cmd" >/dev/null 2>&1; then
+            echo "Error: Required command '$cmd' not found."
+            exit 1
+        fi
+    done
+}
+
+# --- Step 1: Welcome ---
+step_welcome() {
+    dialog --backtitle "$BACKTITLE" --title "$TITLE" \
+        --yesno "Welcome to the ZephyrOS Installer!\n\n\
+Edition:  $EDITION_LABEL\n\
+AI Model: ${OLLAMA_MODEL:-None}\n\n\
+This installer will guide you through:\n\
+  1. Disk selection and partitioning\n\
+  2. System installation\n\
+  3. User account creation\n\
+  4. Bootloader setup\n\n\
+WARNING: The selected disk will be ERASED.\n\n\
+Continue?" 20 60
+
+    if [ $? -ne 0 ]; then
+        clear
+        echo "Installation cancelled."
+        exit 0
+    fi
+}
+
+# --- Step 2: Disk selection ---
+step_select_disk() {
+    # Build disk list
+    local disk_list=()
+    local disk
+
+    while IFS= read -r line; do
+        disk=$(echo "$line" | awk '{print $1}')
+        size=$(echo "$line" | awk '{print $2}')
+        model=$(echo "$line" | awk '{$1=$2=""; print $0}' | sed 's/^ *//')
+        [ -z "$model" ] && model="Unknown"
+        disk_list+=("$disk" "$size  $model")
+    done < <(lsblk -dno NAME,SIZE,MODEL | grep -E '^(sd|vd|nvme)' | sort)
+
+    if [ ${#disk_list[@]} -eq 0 ]; then
+        die "No suitable disks found.\n\nMake sure a virtual disk is attached."
+    fi
+
+    SELECTED_DISK=$(dialog --backtitle "$BACKTITLE" --title "Select Disk" \
+        --menu "Choose the disk to install ZephyrOS on.\n\nWARNING: ALL data on the selected disk will be erased!" \
+        18 70 6 "${disk_list[@]}" 3>&1 1>&2 2>&3)
+
+    if [ $? -ne 0 ] || [ -z "$SELECTED_DISK" ]; then
+        clear
+        echo "Installation cancelled."
+        exit 0
+    fi
+
+    TARGET_DISK="/dev/$SELECTED_DISK"
+
+    # Confirm
+    local disk_size
+    disk_size=$(lsblk -dno SIZE "$TARGET_DISK" 2>/dev/null || echo "unknown")
+
+    dialog --backtitle "$BACKTITLE" --title "Confirm Disk" \
+        --yesno "You selected:\n\n\
+  Disk: $TARGET_DISK\n\
+  Size: $disk_size\n\n\
+ALL DATA ON THIS DISK WILL BE PERMANENTLY ERASED.\n\n\
+Are you absolutely sure?" 14 60
+
+    if [ $? -ne 0 ]; then
+        clear
+        echo "Installation cancelled."
+        exit 0
+    fi
+}
+
+# --- Step 3: User configuration ---
+step_user_config() {
+    # Hostname
+    HOSTNAME=$(dialog --backtitle "$BACKTITLE" --title "Hostname" \
+        --inputbox "Enter a hostname for this machine:" 10 50 "zephyros" \
+        3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && exit 0
+    [ -z "$HOSTNAME" ] && HOSTNAME="zephyros"
+
+    # Username
+    USERNAME=$(dialog --backtitle "$BACKTITLE" --title "User Account" \
+        --inputbox "Enter a username:" 10 50 "" \
+        3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && exit 0
+
+    if [ -z "$USERNAME" ]; then
+        die "Username cannot be empty."
+    fi
+
+    # Password
+    PASSWORD=$(dialog --backtitle "$BACKTITLE" --title "Password" \
+        --insecure --passwordbox "Enter a password for $USERNAME:" 10 50 \
+        3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && exit 0
+
+    PASSWORD_CONFIRM=$(dialog --backtitle "$BACKTITLE" --title "Confirm Password" \
+        --insecure --passwordbox "Confirm password:" 10 50 \
+        3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && exit 0
+
+    if [ "$PASSWORD" != "$PASSWORD_CONFIRM" ]; then
+        die "Passwords do not match."
+    fi
+
+    if [ -z "$PASSWORD" ]; then
+        die "Password cannot be empty."
+    fi
+
+    # Timezone
+    TIMEZONE=$(dialog --backtitle "$BACKTITLE" --title "Timezone" \
+        --inputbox "Enter your timezone (e.g., Asia/Singapore, US/Eastern):" \
+        10 60 "Asia/Singapore" \
+        3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && exit 0
+    [ -z "$TIMEZONE" ] && TIMEZONE="UTC"
+}
+
+# --- Step 4: Partition and format ---
+step_partition() {
+    (
+        echo "10"; echo "XXX"; echo "Wiping disk..."; echo "XXX"
+        run_cmd sgdisk --zap-all "$TARGET_DISK" || true
+
+        echo "25"; echo "XXX"; echo "Creating EFI partition (512MB)..."; echo "XXX"
+        run_cmd sgdisk -n 1:0:+512M -t 1:ef00 -c 1:"EFI" "$TARGET_DISK"
+
+        echo "40"; echo "XXX"; echo "Creating root partition..."; echo "XXX"
+        run_cmd sgdisk -n 2:0:0 -t 2:8300 -c 2:"ZephyrOS" "$TARGET_DISK"
+
+        # Determine partition names (handles nvme naming: nvmeXnYpZ)
+        sleep 1
+        run_cmd partprobe "$TARGET_DISK"
+        sleep 1
+
+        echo "55"; echo "XXX"; echo "Formatting EFI partition (FAT32)..."; echo "XXX"
+        if echo "$TARGET_DISK" | grep -q "nvme"; then
+            EFI_PART="${TARGET_DISK}p1"
+            ROOT_PART="${TARGET_DISK}p2"
+        else
+            EFI_PART="${TARGET_DISK}1"
+            ROOT_PART="${TARGET_DISK}2"
+        fi
+
+        # Save partition paths for later steps
+        echo "$EFI_PART" > /tmp/zephyros-efi-part
+        echo "$ROOT_PART" > /tmp/zephyros-root-part
+
+        run_cmd mkfs.fat -F32 -n "ZEPHYREFI" "$EFI_PART"
+
+        echo "75"; echo "XXX"; echo "Formatting root partition (ext4)..."; echo "XXX"
+        run_cmd mkfs.ext4 -L "ZephyrOS" -F "$ROOT_PART"
+
+        echo "90"; echo "XXX"; echo "Mounting partitions..."; echo "XXX"
+        run_cmd mount "$ROOT_PART" "$MOUNT_DIR"
+        run_cmd mkdir -p "$MOUNT_DIR/boot/efi"
+        run_cmd mount "$EFI_PART" "$MOUNT_DIR/boot/efi"
+
+        echo "100"; echo "XXX"; echo "Partitioning complete."; echo "XXX"
+    ) | dialog --backtitle "$BACKTITLE" --title "Partitioning" --gauge "Preparing disk..." 10 60 0
+
+    EFI_PART=$(cat /tmp/zephyros-efi-part)
+    ROOT_PART=$(cat /tmp/zephyros-root-part)
+}
+
+# --- Step 5: Install base system ---
+step_install() {
+    dialog --backtitle "$BACKTITLE" --title "Installing System" \
+        --infobox "Installing ZephyrOS base system...\n\nThis may take several minutes depending on your internet speed.\n\nPlease wait..." 10 60
+
+    log "Running pacstrap..."
+
+    # Get the package list from the live ISO
+    LIVE_PKG_LIST="/usr/local/share/zephyros/packages.x86_64"
+    if [ -f "$LIVE_PKG_LIST" ]; then
+        # Read packages from the edition's merged list
+        PACKAGES=$(grep -v '^\s*#' "$LIVE_PKG_LIST" | grep -v '^\s*$' | tr '\n' ' ')
+    else
+        # Fallback: install base + essential packages
+        PACKAGES="base linux linux-firmware grub efibootmgr networkmanager sudo"
+    fi
+
+    # Run pacstrap
+    if ! pacstrap -K "$MOUNT_DIR" $PACKAGES >> "$LOG" 2>&1; then
+        # Retry with just base if full list fails
+        log "Full pacstrap failed, trying minimal install..."
+        if ! pacstrap -K "$MOUNT_DIR" base linux linux-firmware grub efibootmgr networkmanager sudo >> "$LOG" 2>&1; then
+            die "pacstrap failed. Check your internet connection and try again."
+        fi
+    fi
+
+    log "pacstrap complete"
+}
+
+# --- Step 6: Configure system ---
+step_configure() {
+    (
+        echo "5"; echo "XXX"; echo "Generating fstab..."; echo "XXX"
+        genfstab -U "$MOUNT_DIR" >> "$MOUNT_DIR/etc/fstab"
+
+        echo "15"; echo "XXX"; echo "Setting timezone ($TIMEZONE)..."; echo "XXX"
+        arch-chroot "$MOUNT_DIR" ln -sf "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime 2>>"$LOG" || \
+            arch-chroot "$MOUNT_DIR" ln -sf /usr/share/zoneinfo/UTC /etc/localtime 2>>"$LOG"
+        arch-chroot "$MOUNT_DIR" hwclock --systohc 2>>"$LOG"
+
+        echo "25"; echo "XXX"; echo "Setting locale..."; echo "XXX"
+        echo "en_US.UTF-8 UTF-8" > "$MOUNT_DIR/etc/locale.gen"
+        arch-chroot "$MOUNT_DIR" locale-gen >> "$LOG" 2>&1
+        echo "LANG=en_US.UTF-8" > "$MOUNT_DIR/etc/locale.conf"
+
+        echo "35"; echo "XXX"; echo "Setting hostname ($HOSTNAME)..."; echo "XXX"
+        echo "$HOSTNAME" > "$MOUNT_DIR/etc/hostname"
+        cat > "$MOUNT_DIR/etc/hosts" <<HOSTS
+127.0.0.1   localhost
+::1         localhost
+127.0.1.1   $HOSTNAME.localdomain $HOSTNAME
+HOSTS
+
+        echo "45"; echo "XXX"; echo "Creating user $USERNAME..."; echo "XXX"
+        arch-chroot "$MOUNT_DIR" useradd -m -G wheel,video,audio,input -s /bin/zsh "$USERNAME" >> "$LOG" 2>&1 || \
+            arch-chroot "$MOUNT_DIR" useradd -m -G wheel,video,audio,input -s /bin/bash "$USERNAME" >> "$LOG" 2>&1
+        echo "$USERNAME:$PASSWORD" | arch-chroot "$MOUNT_DIR" chpasswd >> "$LOG" 2>&1
+
+        # Enable sudo for wheel group
+        echo "%wheel ALL=(ALL:ALL) ALL" > "$MOUNT_DIR/etc/sudoers.d/wheel"
+        chmod 440 "$MOUNT_DIR/etc/sudoers.d/wheel"
+
+        echo "55"; echo "XXX"; echo "Installing GRUB bootloader..."; echo "XXX"
+        arch-chroot "$MOUNT_DIR" grub-install --target=x86_64-efi \
+            --efi-directory=/boot/efi --bootloader-id=ZephyrOS \
+            --recheck >> "$LOG" 2>&1 || die "GRUB installation failed."
+        arch-chroot "$MOUNT_DIR" grub-mkconfig -o /boot/grub/grub.cfg >> "$LOG" 2>&1
+
+        echo "65"; echo "XXX"; echo "Enabling services..."; echo "XXX"
+        arch-chroot "$MOUNT_DIR" systemctl enable NetworkManager >> "$LOG" 2>&1
+        arch-chroot "$MOUNT_DIR" systemctl enable systemd-timesyncd >> "$LOG" 2>&1
+
+        echo "75"; echo "XXX"; echo "Copying edition configuration..."; echo "XXX"
+        # Copy edition config
+        if [ -f "$CONF" ]; then
+            cp "$CONF" "$MOUNT_DIR/etc/zephyros-edition.conf"
+        fi
+
+        # Copy first-boot service and script
+        if [ -f /usr/local/bin/zephyros-firstboot.sh ]; then
+            cp /usr/local/bin/zephyros-firstboot.sh "$MOUNT_DIR/usr/local/bin/zephyros-firstboot.sh"
+            chmod 755 "$MOUNT_DIR/usr/local/bin/zephyros-firstboot.sh"
+        fi
+        if [ -f /usr/lib/systemd/system/zephyros-firstboot.service ]; then
+            cp /usr/lib/systemd/system/zephyros-firstboot.service \
+                "$MOUNT_DIR/usr/lib/systemd/system/zephyros-firstboot.service"
+            arch-chroot "$MOUNT_DIR" systemctl enable zephyros-firstboot.service >> "$LOG" 2>&1
+        fi
+
+        # Copy AI wrapper
+        if [ -f /usr/local/bin/zephyros-ai ]; then
+            cp /usr/local/bin/zephyros-ai "$MOUNT_DIR/usr/local/bin/zephyros-ai"
+            chmod 755 "$MOUNT_DIR/usr/local/bin/zephyros-ai"
+        fi
+
+        echo "85"; echo "XXX"; echo "Applying ZephyrOS theme..."; echo "XXX"
+        # Copy dotfiles to new user's home
+        USER_HOME="$MOUNT_DIR/home/$USERNAME"
+        mkdir -p "$USER_HOME/.config"
+
+        # Copy configs from live environment if available
+        for conf_dir in wayfire.ini; do
+            if [ -f "/etc/skel/.config/$conf_dir" ]; then
+                cp "/etc/skel/.config/$conf_dir" "$USER_HOME/.config/$conf_dir"
+            fi
+        done
+
+        for conf_dir in kitty wofi wf-panel-pi; do
+            if [ -d "/etc/skel/.config/$conf_dir" ]; then
+                cp -a "/etc/skel/.config/$conf_dir" "$USER_HOME/.config/$conf_dir"
+            fi
+        done
+
+        if [ -f /etc/skel/.zshrc ]; then
+            cp /etc/skel/.zshrc "$USER_HOME/.zshrc"
+        fi
+
+        # Fix ownership
+        arch-chroot "$MOUNT_DIR" chown -R "$USERNAME:$USERNAME" "/home/$USERNAME" >> "$LOG" 2>&1
+
+        # Copy MOTD if available
+        if [ -f /etc/zephyros-motd ]; then
+            cp /etc/zephyros-motd "$MOUNT_DIR/etc/zephyros-motd"
+        fi
+
+        echo "95"; echo "XXX"; echo "Setting up Wayfire auto-start..."; echo "XXX"
+        # Auto-start Wayfire on login (TTY1)
+        ZPROFILE="$USER_HOME/.zprofile"
+        cat > "$ZPROFILE" <<'ZPROF'
+# Auto-start Wayfire on TTY1
+if [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
+    exec wayfire
+fi
+ZPROF
+        arch-chroot "$MOUNT_DIR" chown "$USERNAME:$USERNAME" "/home/$USERNAME/.zprofile" >> "$LOG" 2>&1
+
+        # Enable autologin on TTY1 for the user
+        mkdir -p "$MOUNT_DIR/etc/systemd/system/getty@tty1.service.d"
+        cat > "$MOUNT_DIR/etc/systemd/system/getty@tty1.service.d/autologin.conf" <<AUTOLOGIN
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin $USERNAME --noclear %I \$TERM
+AUTOLOGIN
+
+        echo "100"; echo "XXX"; echo "Configuration complete!"; echo "XXX"
+    ) | dialog --backtitle "$BACKTITLE" --title "Configuring System" --gauge "Configuring..." 10 60 0
+}
+
+# --- Step 7: Finish ---
+step_finish() {
+    # Unmount
+    log "Unmounting partitions..."
+    umount -R "$MOUNT_DIR" >> "$LOG" 2>&1 || true
+
+    dialog --backtitle "$BACKTITLE" --title "Installation Complete!" \
+        --yesno "ZephyrOS $EDITION_LABEL has been installed successfully!\n\n\
+User:     $USERNAME\n\
+Hostname: $HOSTNAME\n\
+Timezone: $TIMEZONE\n\
+AI Model: ${OLLAMA_MODEL:-None}\n\n\
+On first boot, the AI model will be automatically downloaded\n\
+(requires internet connection).\n\n\
+Remove the installation media and reboot now?" 18 60
+
+    if [ $? -eq 0 ]; then
+        reboot
+    else
+        clear
+        echo "Installation complete. You can reboot manually when ready."
+        echo "Remember to remove the installation media before rebooting."
+    fi
+}
+
+# --- Main ---
+main() {
+    check_root
+    check_deps
+    check_uefi
+
+    > "$LOG"
+    log "ZephyrOS installer started"
+    log "Edition: $EDITION_LABEL"
+
+    step_welcome
+    step_select_disk
+    step_user_config
+    step_partition
+    step_install
+    step_configure
+    step_finish
+}
+
+main "$@"

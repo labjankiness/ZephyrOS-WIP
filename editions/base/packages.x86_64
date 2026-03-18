@@ -76,5 +76,13 @@ xdg-desktop-portal-wlr
 qemu-guest-agent
 spice-vdagent
 
+# --- Installer dependencies ---
+arch-install-scripts
+dialog
+gptfdisk
+dosfstools
+e2fsprogs
+parted
+
 # --- AI runtime (shared across all AI editions) ---
 ollama

@@ -138,10 +138,56 @@ main() {
         -e "s|^iso_label=.*|iso_label=\"${ISO_NAME^^}_\$(date --date=\"@\${SOURCE_DATE_EPOCH:-\$(date +%s)}\" +%Y%m)\"|" \
         "$PROFILE_TMP/profiledef.sh"
 
-    # Add execute permission for firstboot script
+    # --- Include merged package list in ISO for the installer ---
+    mkdir -p "$AIROOTFS/usr/local/share/zephyros"
+    cp "$PROFILE_TMP/packages.x86_64" "$AIROOTFS/usr/local/share/zephyros/packages.x86_64"
+
+    # --- Copy AI wrapper script ---
+    if [ -f "$BASE_DIR/airootfs/usr/local/bin/zephyros-ai" ]; then
+        cp "$BASE_DIR/airootfs/usr/local/bin/zephyros-ai" "$AIROOTFS/usr/local/bin/zephyros-ai"
+    fi
+
+    # --- Copy installer and welcome script ---
+    if [ -f "$BASE_DIR/airootfs/usr/local/bin/zephyros-install" ]; then
+        cp "$BASE_DIR/airootfs/usr/local/bin/zephyros-install" "$AIROOTFS/usr/local/bin/zephyros-install"
+    fi
+    if [ -f "$BASE_DIR/airootfs/usr/local/bin/zephyros-welcome" ]; then
+        cp "$BASE_DIR/airootfs/usr/local/bin/zephyros-welcome" "$AIROOTFS/usr/local/bin/zephyros-welcome"
+    fi
+
+    # --- Copy desktop entries ---
+    if [ -d "$BASE_DIR/airootfs/usr/share/applications" ]; then
+        mkdir -p "$AIROOTFS/usr/share/applications"
+        cp -a "$BASE_DIR/airootfs/usr/share/applications/." "$AIROOTFS/usr/share/applications/"
+    fi
+    if [ -d "$BASE_DIR/airootfs/etc/skel/Desktop" ]; then
+        mkdir -p "$AIROOTFS/etc/skel/Desktop"
+        cp -a "$BASE_DIR/airootfs/etc/skel/Desktop/." "$AIROOTFS/etc/skel/Desktop/"
+    fi
+    if [ -d "$BASE_DIR/airootfs/etc/skel/.config" ]; then
+        mkdir -p "$AIROOTFS/etc/skel/.config"
+        cp -a "$BASE_DIR/airootfs/etc/skel/.config/." "$AIROOTFS/etc/skel/.config/"
+    fi
+    if [ -f "$BASE_DIR/airootfs/etc/skel/.zprofile" ]; then
+        cp "$BASE_DIR/airootfs/etc/skel/.zprofile" "$AIROOTFS/etc/skel/.zprofile"
+    fi
+
+    # Add execute permissions for scripts
     # archiso file_permissions format: ["path"]="uid:gid:mode"
     if ! grep -q 'zephyros-firstboot' "$PROFILE_TMP/profiledef.sh"; then
         sed -i '/^file_permissions=(/a\  ["/usr/local/bin/zephyros-firstboot.sh"]="0:0:755"' \
+            "$PROFILE_TMP/profiledef.sh"
+    fi
+    if ! grep -q 'zephyros-install' "$PROFILE_TMP/profiledef.sh"; then
+        sed -i '/^file_permissions=(/a\  ["/usr/local/bin/zephyros-install"]="0:0:755"' \
+            "$PROFILE_TMP/profiledef.sh"
+    fi
+    if ! grep -q 'zephyros-ai' "$PROFILE_TMP/profiledef.sh"; then
+        sed -i '/^file_permissions=(/a\  ["/usr/local/bin/zephyros-ai"]="0:0:755"' \
+            "$PROFILE_TMP/profiledef.sh"
+    fi
+    if ! grep -q 'zephyros-welcome' "$PROFILE_TMP/profiledef.sh"; then
+        sed -i '/^file_permissions=(/a\  ["/usr/local/bin/zephyros-welcome"]="0:0:755"' \
             "$PROFILE_TMP/profiledef.sh"
     fi
 

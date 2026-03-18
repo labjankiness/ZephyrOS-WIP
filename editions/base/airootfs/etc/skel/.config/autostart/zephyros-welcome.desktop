@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=ZephyrOS Welcome
+Comment=Welcome dialog for live session
+Exec=kitty --title "Welcome" -e zephyros-welcome
+Terminal=false
+Type=Application
+X-GNOME-Autostart-enabled=true

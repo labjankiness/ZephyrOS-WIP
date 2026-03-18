@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Install ZephyrOS
+Comment=Install ZephyrOS to disk
+Exec=kitty --title "ZephyrOS Installer" -e sudo zephyros-install
+Icon=system-software-install
+Terminal=false
+Type=Application
+Categories=System;
+Keywords=install;setup;

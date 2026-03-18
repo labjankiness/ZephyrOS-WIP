@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+#
+# zephyros-welcome — Live session welcome message
+#
+# Shows a welcome dialog on the live ISO desktop with options to
+# install or try ZephyrOS.
+#
+
+CONF="/etc/zephyros-edition.conf"
+EDITION_LABEL="ZephyrOS"
+OLLAMA_MODEL=""
+
+if [ -f "$CONF" ]; then
+    # shellcheck source=/dev/null
+    . "$CONF"
+fi
+
+# Only show on live session (no stamp file means not installed)
+if [ -f /var/lib/zephyros/.installed ]; then
+    exit 0
+fi
+
+# Wait for desktop to be ready
+sleep 3
+
+CHOICE=$(dialog --stdout --backtitle "Welcome to $EDITION_LABEL" \
+    --title "Welcome to $EDITION_LABEL" \
+    --menu "\nYou are running a live session.\nChoose an option to get started:\n" \
+    16 55 3 \
+    "install" "Install ZephyrOS to disk" \
+    "try"     "Try ZephyrOS without installing" \
+    "terminal" "Open a terminal")
+
+case "$CHOICE" in
+    install)
+        kitty --title "ZephyrOS Installer" -e sudo zephyros-install &
+        ;;
+    terminal)
+        kitty &
+        ;;
+    try|*)
+        # Do nothing, let the user explore the live desktop
+        ;;
+esac
