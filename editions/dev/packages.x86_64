@@ -1,0 +1,56 @@
+# =============================================================================
+# ZephyrOS Dev Edition — additional packages
+# =============================================================================
+
+# --- Code editors ---
+neovim
+helix
+
+# --- Version control ---
+git
+git-delta
+lazygit
+
+# --- Languages & runtimes ---
+python
+python-pip
+nodejs
+npm
+go
+rust
+
+# --- Build tools ---
+base-devel
+cmake
+meson
+ninja
+
+# --- Containers ---
+docker
+docker-compose
+
+# --- Terminal multiplexer ---
+tmux
+
+# --- Network & API tools ---
+curl
+wget
+jq
+
+# --- File search & navigation ---
+fd
+ripgrep
+fzf
+bat
+eza
+
+# --- Web browser ---
+firefox
+
+# --- Screenshot ---
+grim
+slurp
+
+# --- Process monitoring ---
+htop
+btop

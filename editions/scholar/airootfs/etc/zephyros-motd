@@ -1,0 +1,12 @@
+
+  ╔══════════════════════════════════════════════════════════╗
+  ║           ZephyrOS Scholar Edition                      ║
+  ║                                                         ║
+  ║  AI Model : Phi-3 Mini (3.8B)                          ║
+  ║  Usage    : ollama run phi3:mini                       ║
+  ║                                                         ║
+  ║  Try: "Explain the concept of recursion with examples" ║
+  ║       "Summarize this paragraph: ..."                  ║
+  ║       "Help me solve this math problem: ..."           ║
+  ╚══════════════════════════════════════════════════════════╝
+

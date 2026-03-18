@@ -1,0 +1,12 @@
+
+  ╔══════════════════════════════════════════════════════════╗
+  ║           ZephyrOS Lite Edition                         ║
+  ║                                                         ║
+  ║  AI Model : SmolLM2 1.7B (~1GB RAM)                   ║
+  ║  Usage    : zephyros-ai "your question here"           ║
+  ║           : ollama run smollm2:1.7b                    ║
+  ║                                                         ║
+  ║  Optimized for low-end hardware (4GB+ RAM).            ║
+  ║  Fast responses, small footprint.                      ║
+  ╚══════════════════════════════════════════════════════════╝
+

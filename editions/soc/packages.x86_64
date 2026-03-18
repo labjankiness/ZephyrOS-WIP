@@ -1,0 +1,44 @@
+# =============================================================================
+# ZephyrOS SOC Edition — additional packages
+# =============================================================================
+
+# --- Network analysis ---
+wireshark-qt
+tcpdump
+nmap
+
+# --- Log analysis ---
+jq
+
+# --- Scripting & automation ---
+python
+python-pip
+
+# --- Terminal tools ---
+tmux
+htop
+
+# --- Network utilities ---
+curl
+wget
+whois
+bind-tools
+traceroute
+net-tools
+
+# --- File search ---
+ripgrep
+fd
+
+# --- Text editor ---
+neovim
+
+# --- Web browser ---
+firefox
+
+# --- Screenshot ---
+grim
+slurp
+
+# --- Version control ---
+git

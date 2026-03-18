@@ -1,0 +1,80 @@
+# =============================================================================
+# ZephyrOS Base Packages — shared across all editions
+# =============================================================================
+
+# --- Base system ---
+base
+mkinitcpio
+systemd
+
+# --- Kernel & firmware ---
+linux
+linux-firmware
+
+# --- Boot & Secure Boot ---
+grub
+efibootmgr
+archlinux-shim
+sbsigntools
+efitools
+mokutil
+
+# --- Wayland & Wayfire stack ---
+wayland
+wlroots
+wayfire
+wayfire-plugins-extra
+wf-shell
+xorg-server-xwayland
+
+# --- Panel & launcher ---
+wf-panel-pi
+wofi
+
+# --- Display & GPU ---
+mesa
+vulkan-radeon
+vulkan-intel
+virglrenderer
+
+# --- Fonts ---
+ttf-inter
+noto-fonts
+noto-fonts-emoji
+
+# --- File manager ---
+thunar
+gvfs
+
+# --- Terminal ---
+kitty
+
+# --- Shell ---
+zsh
+zsh-completions
+
+# --- GTK theming ---
+adw-gtk3
+fluent-icon-theme-git
+bibata-cursor-theme
+
+# --- Audio ---
+pipewire
+pipewire-pulse
+wireplumber
+
+# --- Networking ---
+networkmanager
+network-manager-applet
+
+# --- Flatpak ---
+flatpak
+xdg-desktop-portal
+xdg-desktop-portal-wlr
+
+# --- VM guest utilities ---
+qemu-guest-agent
+spice-vdagent
+
+# --- AI runtime (shared across all AI editions) ---
+ollama

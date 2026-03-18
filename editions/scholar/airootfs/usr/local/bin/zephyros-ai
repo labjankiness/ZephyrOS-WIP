@@ -1,0 +1,69 @@
+#!/usr/bin/env sh
+#
+# zephyros-ai — Interactive AI assistant wrapper for ZephyrOS editions
+#
+# Reads the edition config to determine the model, then launches an
+# interactive Ollama session with an edition-appropriate system prompt.
+#
+set -eu
+
+CONF="/etc/zephyros-edition.conf"
+
+if [ ! -f "$CONF" ]; then
+    echo "Error: No edition config found. Is this a ZephyrOS edition?" >&2
+    exit 1
+fi
+
+# shellcheck source=/dev/null
+. "$CONF"
+
+if [ -z "${OLLAMA_MODEL:-}" ]; then
+    echo "Error: No AI model configured for this edition." >&2
+    exit 1
+fi
+
+# Check if Ollama is running
+if ! curl -sf http://localhost:11434/api/tags >/dev/null 2>&1; then
+    echo "Starting Ollama..."
+    sudo systemctl start ollama.service
+    sleep 3
+fi
+
+# Check if model is available
+if ! ollama list 2>/dev/null | grep -q "${OLLAMA_MODEL%%:*}"; then
+    echo "Model $OLLAMA_MODEL not found. Pulling (this may take a while)..."
+    ollama pull "$OLLAMA_MODEL"
+fi
+
+# Edition-specific system prompts
+case "${EDITION_NAME:-}" in
+    scholar)
+        SYSTEM="You are a helpful AI tutor running locally on ZephyrOS Scholar Edition. You help students learn by explaining concepts clearly, providing examples, checking understanding, and encouraging critical thinking. Break down complex topics into digestible steps. When solving problems, show your reasoning. Never give answers directly for homework — guide the student to discover the answer."
+        ;;
+    dev)
+        SYSTEM="You are a senior software engineering assistant running locally on ZephyrOS Dev Edition. You help developers write, debug, review, and refactor code. Provide concise, production-quality suggestions. When reviewing code, focus on correctness, performance, and maintainability. Suggest terminal commands when appropriate. You have access to the local system — reference common dev tools (git, docker, neovim, etc.)."
+        ;;
+    soc)
+        SYSTEM="You are a Senior SOC Analyst AI assistant running locally on ZephyrOS SOC Edition. You help security analysts triage alerts, investigate incidents, analyze logs, and develop detection rules. For each alert, assess: true positive vs false positive, severity (1-10), attack vector, affected assets, and recommended remediation. Reference MITRE ATT&CK techniques when applicable."
+        ;;
+    lite)
+        SYSTEM="You are a helpful AI assistant running locally on ZephyrOS Lite Edition. Keep responses concise and practical. You run on limited hardware, so be efficient with your answers."
+        ;;
+    *)
+        SYSTEM="You are a helpful AI assistant running locally on ZephyrOS."
+        ;;
+esac
+
+echo "=== ZephyrOS AI Assistant ($EDITION_LABEL) ==="
+echo "Model: $OLLAMA_MODEL"
+echo "Type your message. Press Ctrl+C to exit."
+echo ""
+
+# If arguments were passed, run as a one-shot query
+if [ "$#" -gt 0 ]; then
+    ollama run "$OLLAMA_MODEL" --system "$SYSTEM" "$*"
+    exit 0
+fi
+
+# Interactive mode
+ollama run "$OLLAMA_MODEL" --system "$SYSTEM"

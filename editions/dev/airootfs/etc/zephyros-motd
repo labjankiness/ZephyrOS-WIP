@@ -1,0 +1,13 @@
+
+  ╔══════════════════════════════════════════════════════════════╗
+  ║           ZephyrOS Dev Edition                              ║
+  ║                                                             ║
+  ║  AI Model : DeepSeek Coder V2 16B Lite                     ║
+  ║  Usage    : zephyros-ai "write a Python HTTP server"       ║
+  ║           : ollama run deepseek-coder-v2:16b-lite-instruct-q4_0  ║
+  ║                                                             ║
+  ║  Tools    : neovim, helix, git, docker, tmux, lazygit      ║
+  ║  Langs    : python, node, go, rust                         ║
+  ║  Search   : ripgrep, fd, fzf, bat                          ║
+  ╚══════════════════════════════════════════════════════════════╝
+

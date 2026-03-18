@@ -1,0 +1,16 @@
+[Unit]
+Description=ZephyrOS First Boot Setup (AI model pull + edition config)
+After=network-online.target ollama.service
+Wants=network-online.target
+ConditionPathExists=!/var/lib/zephyros/.firstboot-done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/zephyros-firstboot.sh
+RemainAfterExit=yes
+StandardOutput=journal+console
+StandardError=journal+console
+TimeoutStartSec=600
+
+[Install]
+WantedBy=multi-user.target

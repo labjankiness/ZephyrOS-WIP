@@ -1,0 +1,23 @@
+# =============================================================================
+# ZephyrOS Lite Edition — minimal additional packages
+# =============================================================================
+# Intentionally small: this edition targets 4GB RAM machines.
+# No heavy apps — just essentials + the lightest usable AI model.
+
+# --- Text editor ---
+mousepad
+
+# --- Web browser (lightweight) ---
+midori
+
+# --- File utilities ---
+xarchiver
+
+# --- Screenshot ---
+grim
+
+# --- Calculator ---
+galculator
+
+# --- System monitor ---
+htop

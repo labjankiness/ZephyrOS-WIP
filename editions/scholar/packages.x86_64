@@ -1,0 +1,27 @@
+# =============================================================================
+# ZephyrOS Scholar Edition — additional packages
+# =============================================================================
+
+# --- Document viewing & editing ---
+evince
+xournalpp
+
+# --- Web browser ---
+firefox
+
+# --- Text editor (GUI) ---
+mousepad
+
+# --- Screenshot & media ---
+grim
+slurp
+
+# --- PDF utilities ---
+poppler
+
+# --- Calculator ---
+galculator
+
+# --- Spell checking ---
+hunspell
+hunspell-en_us

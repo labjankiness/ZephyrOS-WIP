@@ -1,0 +1,15 @@
+
+  ╔══════════════════════════════════════════════════════════════╗
+  ║           ZephyrOS SOC Edition                              ║
+  ║                                                             ║
+  ║  AI Model : Llama 3.1 8B                                   ║
+  ║  Usage    : zephyros-ai "triage this alert: ..."           ║
+  ║           : ollama run llama3.1:8b                         ║
+  ║                                                             ║
+  ║  Tools    : wireshark, nmap, tcpdump, whois, dig           ║
+  ║  Analysis : ripgrep, jq, python                            ║
+  ║                                                             ║
+  ║  The AI acts as a Senior SOC Analyst — feed it raw logs,   ║
+  ║  alerts, or IOCs for instant triage and remediation.       ║
+  ╚══════════════════════════════════════════════════════════════╝
+
