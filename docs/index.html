@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZephyrOS — AI-Powered Linux for Everyone</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ===== Reset & Base ===== */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: #1a2235;
+            --bg-card-hover: #1f2a40;
+            --accent: #3b82f6;
+            --accent-light: #60a5fa;
+            --accent-glow: rgba(59, 130, 246, 0.25);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: #1e293b;
+            --scholar: #8b5cf6;
+            --dev: #06b6d4;
+            --soc: #ef4444;
+            --lite: #22c55e;
+            --core: #6b7280;
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        a { color: var(--accent-light); text-decoration: none; transition: color 0.2s; }
+        a:hover { color: #93c5fd; }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+        /* ===== Navigation ===== */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 100;
+            background: rgba(10, 14, 26, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 64px;
+        }
+
+        .nav-logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-logo .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .nav-links { display: flex; gap: 32px; list-style: none; }
+        .nav-links a {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--text-primary); }
+
+        .nav-cta {
+            background: var(--accent);
+            color: white !important;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .nav-cta:hover { background: #2563eb; transform: translateY(-1px); }
+
+        /* ===== Hero ===== */
+        .hero {
+            padding: 160px 0 100px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -200px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 100px;
+            font-size: 0.85rem;
+            color: var(--accent-light);
+            margin-bottom: 24px;
+        }
+
+        .hero-badge .dot {
+            width: 6px;
+            height: 6px;
+            background: var(--accent-light);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 6vw, 4.5rem);
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero h1 span {
+            background: linear-gradient(135deg, var(--accent-light) 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            max-width: 640px;
+            margin: 0 auto 40px;
+            line-height: 1.7;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 28px;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 4px 20px var(--accent-glow);
+        }
+        .btn-primary:hover {
+            background: #2563eb;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px var(--accent-glow);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+            transform: translateY(-2px);
+        }
+
+        /* ===== Features ===== */
+        .features {
+            padding: 80px 0;
+        }
+
+        .section-label {
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 2px;
+            color: var(--accent-light);
+            margin-bottom: 12px;
+        }
+
+        .section-title {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .section-desc {
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+            max-width: 600px;
+            margin-bottom: 48px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px;
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            border-color: rgba(59, 130, 246, 0.3);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 16px;
+        }
+
+        .feature-card h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 0.92rem;
+            line-height: 1.6;
+        }
+
+        /* ===== Editions ===== */
+        .editions {
+            padding: 80px 0;
+        }
+
+        .editions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+
+        .edition-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 32px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .edition-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+        }
+
+        .edition-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .edition-card.scholar::before { background: linear-gradient(90deg, var(--scholar), #a78bfa); }
+        .edition-card.dev::before { background: linear-gradient(90deg, var(--dev), #22d3ee); }
+        .edition-card.soc::before { background: linear-gradient(90deg, var(--soc), #f87171); }
+        .edition-card.lite::before { background: linear-gradient(90deg, var(--lite), #4ade80); }
+        .edition-card.core::before { background: linear-gradient(90deg, var(--core), #9ca3af); }
+
+        .edition-card:hover.scholar { border-color: rgba(139, 92, 246, 0.3); }
+        .edition-card:hover.dev { border-color: rgba(6, 182, 212, 0.3); }
+        .edition-card:hover.soc { border-color: rgba(239, 68, 68, 0.3); }
+        .edition-card:hover.lite { border-color: rgba(34, 197, 94, 0.3); }
+        .edition-card:hover.core { border-color: rgba(107, 114, 128, 0.3); }
+
+        .edition-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .edition-name {
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+
+        .edition-badge {
+            padding: 4px 12px;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .edition-card.scholar .edition-badge { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+        .edition-card.dev .edition-badge { background: rgba(6, 182, 212, 0.15); color: #22d3ee; }
+        .edition-card.soc .edition-badge { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+        .edition-card.lite .edition-badge { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+        .edition-card.core .edition-badge { background: rgba(107, 114, 128, 0.15); color: #9ca3af; }
+
+        .edition-desc {
+            color: var(--text-secondary);
+            font-size: 0.92rem;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .edition-specs {
+            list-style: none;
+            margin-bottom: 24px;
+        }
+
+        .edition-specs li {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 0;
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            border-bottom: 1px solid rgba(30, 41, 59, 0.5);
+        }
+
+        .edition-specs li:last-child { border-bottom: none; }
+
+        .edition-specs .spec-label {
+            color: var(--text-muted);
+            min-width: 80px;
+        }
+
+        .edition-specs .spec-value {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .btn-download {
+            width: 100%;
+            justify-content: center;
+            padding: 12px;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 0.9rem;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-download:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent);
+            color: var(--text-primary);
+        }
+
+        /* ===== Installation ===== */
+        .installation {
+            padding: 80px 0;
+        }
+
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+            margin-top: 48px;
+        }
+
+        .step {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px;
+            position: relative;
+        }
+
+        .step-number {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 16px;
+        }
+
+        .step h3 {
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .step p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        /* ===== Requirements ===== */
+        .requirements {
+            padding: 80px 0;
+        }
+
+        .req-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 32px;
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .req-table th, .req-table td {
+            padding: 14px 20px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .req-table th {
+            background: var(--bg-secondary);
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+        }
+
+        .req-table td {
+            font-size: 0.92rem;
+            color: var(--text-secondary);
+        }
+
+        .req-table tr:last-child td { border-bottom: none; }
+        .req-table tr:hover td { background: rgba(59, 130, 246, 0.03); }
+
+        /* ===== Code block ===== */
+        .code-block {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 20px 24px;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            overflow-x: auto;
+            margin: 16px 0;
+            position: relative;
+        }
+
+        .code-block .prompt { color: var(--accent-light); }
+        .code-block .comment { color: var(--text-muted); }
+
+        /* ===== Footer ===== */
+        footer {
+            padding: 48px 0;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .footer-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .footer-left {
+            color: var(--text-muted);
+            font-size: 0.88rem;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 24px;
+            list-style: none;
+        }
+
+        .footer-links a {
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            transition: color 0.2s;
+        }
+        .footer-links a:hover { color: var(--text-primary); }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .hero { padding: 120px 0 60px; }
+            .hero h1 { font-size: 2.2rem; }
+            .hero p { font-size: 1rem; }
+            .hero-buttons { flex-direction: column; align-items: center; }
+            .editions-grid { grid-template-columns: 1fr; }
+            .features-grid { grid-template-columns: 1fr; }
+            .steps { grid-template-columns: 1fr; }
+            .footer-inner { flex-direction: column; text-align: center; }
+            .req-table { font-size: 0.85rem; }
+            .req-table th, .req-table td { padding: 10px 12px; }
+        }
+
+        /* ===== Animations ===== */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav>
+    <div class="nav-inner">
+        <div class="nav-logo">
+            <div class="logo-icon">Z</div>
+            ZephyrOS
+        </div>
+        <ul class="nav-links">
+            <li><a href="#features">Features</a></li>
+            <li><a href="#editions">Editions</a></li>
+            <li><a href="#installation">Installation</a></li>
+            <li><a href="#requirements">Requirements</a></li>
+            <li><a href="https://github.com/labjankiness/ZephyrOS-WIP" target="_blank">GitHub</a></li>
+        </ul>
+        <a href="#editions" class="nav-cta">Download</a>
+    </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+    <div class="container">
+        <div class="hero-badge">
+            <span class="dot"></span>
+            Work in Progress &mdash; Active Development
+        </div>
+        <h1>Your OS. <span>Your AI.</span><br>Running Locally.</h1>
+        <p>ZephyrOS is a lightweight, Arch-based Linux distribution with a built-in AI assistant powered by Ollama. Choose an edition tailored to your workflow &mdash; every model runs locally on your machine, no cloud required.</p>
+        <div class="hero-buttons">
+            <a href="#editions" class="btn btn-primary">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                Download ISO
+            </a>
+            <a href="https://github.com/labjankiness/ZephyrOS-WIP" target="_blank" class="btn btn-secondary">
+                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                View Source
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Features -->
+<section class="features fade-in" id="features">
+    <div class="container">
+        <div class="section-label">Why ZephyrOS</div>
+        <h2 class="section-title">Built Different</h2>
+        <p class="section-desc">A modern desktop experience with AI that respects your privacy and runs entirely on your hardware.</p>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">&#129302;</div>
+                <h3>Local AI Assistant</h3>
+                <p>Every edition ships with an AI model via Ollama. Ask questions, write code, analyze logs &mdash; all offline, all private. No data leaves your machine.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#9889;</div>
+                <h3>Lightweight & Fast</h3>
+                <p>Built on Arch Linux with Wayfire (Wayland compositor). Minimal resource usage means more RAM for your AI model and your work.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#128274;</div>
+                <h3>Secure Boot Ready</h3>
+                <p>Full UEFI Secure Boot support with shim &rarr; GRUB2 &rarr; signed kernel chain. Your system is verified from firmware to desktop.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#127912;</div>
+                <h3>Modern Desktop</h3>
+                <p>Windows 11-inspired design with a centered taskbar, frosted glass effects, rounded corners, and a beautiful dark theme out of the box.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#128230;</div>
+                <h3>Choose Your Edition</h3>
+                <p>5 editions tailored for different workflows. Each comes with curated tools and an AI model optimized for your use case.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#128736;</div>
+                <h3>Easy Installation</h3>
+                <p>Guided TUI installer walks you through disk setup, user creation, and configuration. Boot the ISO, click install, and you're done.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Editions -->
+<section class="editions fade-in" id="editions">
+    <div class="container">
+        <div class="section-label">Choose Your Edition</div>
+        <h2 class="section-title">Download ZephyrOS</h2>
+        <p class="section-desc">Each edition includes a full desktop environment, curated tools, and a locally-running AI model. Pick the one that fits your workflow.</p>
+
+        <div class="editions-grid">
+            <!-- Scholar -->
+            <div class="edition-card scholar">
+                <div class="edition-header">
+                    <div class="edition-name">Scholar</div>
+                    <span class="edition-badge">Student</span>
+                </div>
+                <p class="edition-desc">AI-powered study companion. The AI acts as a patient tutor &mdash; explaining concepts, guiding problem-solving, and checking your understanding.</p>
+                <ul class="edition-specs">
+                    <li><span class="spec-label">AI Model</span><span class="spec-value">Phi-3 Mini (3.8B)</span></li>
+                    <li><span class="spec-label">RAM</span><span class="spec-value">8 GB minimum</span></li>
+                    <li><span class="spec-label">Tools</span><span class="spec-value">Firefox, Evince, Xournal++</span></li>
+                </ul>
+                <a href="#" class="btn-download" onclick="alert('ISO builds are coming soon! Star the GitHub repo to get notified.'); return false;">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    Download Scholar ISO
+                </a>
+            </div>
+
+            <!-- Dev -->
+            <div class="edition-card dev">
+                <div class="edition-header">
+                    <div class="edition-name">Dev</div>
+                    <span class="edition-badge">Developer</span>
+                </div>
+                <p class="edition-desc">Full-stack development workstation. AI code assistant helps you write, debug, and review code across 6 languages with production-quality suggestions.</p>
+                <ul class="edition-specs">
+                    <li><span class="spec-label">AI Model</span><span class="spec-value">DeepSeek Coder V2 16B</span></li>
+                    <li><span class="spec-label">RAM</span><span class="spec-value">16 GB minimum</span></li>
+                    <li><span class="spec-label">Tools</span><span class="spec-value">Neovim, Helix, Docker, Git</span></li>
+                    <li><span class="spec-label">Languages</span><span class="spec-value">Python, Node, Go, Rust</span></li>
+                </ul>
+                <a href="#" class="btn-download" onclick="alert('ISO builds are coming soon! Star the GitHub repo to get notified.'); return false;">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    Download Dev ISO
+                </a>
+            </div>
+
+            <!-- SOC -->
+            <div class="edition-card soc">
+                <div class="edition-header">
+                    <div class="edition-name">SOC</div>
+                    <span class="edition-badge">Security</span>
+                </div>
+                <p class="edition-desc">Security operations workstation. AI acts as a Senior SOC Analyst &mdash; triaging alerts, analyzing logs, and mapping to MITRE ATT&CK techniques.</p>
+                <ul class="edition-specs">
+                    <li><span class="spec-label">AI Model</span><span class="spec-value">Llama 3.1 8B</span></li>
+                    <li><span class="spec-label">RAM</span><span class="spec-value">16 GB minimum</span></li>
+                    <li><span class="spec-label">Tools</span><span class="spec-value">Wireshark, Nmap, tcpdump</span></li>
+                </ul>
+                <a href="#" class="btn-download" onclick="alert('ISO builds are coming soon! Star the GitHub repo to get notified.'); return false;">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    Download SOC ISO
+                </a>
+            </div>
+
+            <!-- Lite -->
+            <div class="edition-card lite">
+                <div class="edition-header">
+                    <div class="edition-name">Lite</div>
+                    <span class="edition-badge">Minimal</span>
+                </div>
+                <p class="edition-desc">For low-end hardware. A lightweight AI assistant with a minimal footprint &mdash; fast responses, small model, low resource usage.</p>
+                <ul class="edition-specs">
+                    <li><span class="spec-label">AI Model</span><span class="spec-value">SmolLM2 1.7B</span></li>
+                    <li><span class="spec-label">RAM</span><span class="spec-value">4 GB minimum</span></li>
+                    <li><span class="spec-label">Tools</span><span class="spec-value">Mousepad, Midori</span></li>
+                </ul>
+                <a href="#" class="btn-download" onclick="alert('ISO builds are coming soon! Star the GitHub repo to get notified.'); return false;">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    Download Lite ISO
+                </a>
+            </div>
+
+            <!-- Core -->
+            <div class="edition-card core">
+                <div class="edition-header">
+                    <div class="edition-name">Core</div>
+                    <span class="edition-badge">Base</span>
+                </div>
+                <p class="edition-desc">The base desktop without a bundled AI model. Perfect if you want the ZephyrOS desktop experience and prefer to configure AI yourself.</p>
+                <ul class="edition-specs">
+                    <li><span class="spec-label">AI Model</span><span class="spec-value">None (Ollama included)</span></li>
+                    <li><span class="spec-label">RAM</span><span class="spec-value">4 GB minimum</span></li>
+                    <li><span class="spec-label">Tools</span><span class="spec-value">Thunar, Kitty, Wofi</span></li>
+                </ul>
+                <a href="#" class="btn-download" onclick="alert('ISO builds are coming soon! Star the GitHub repo to get notified.'); return false;">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    Download Core ISO
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Installation -->
+<section class="installation fade-in" id="installation">
+    <div class="container">
+        <div class="section-label">Getting Started</div>
+        <h2 class="section-title">Installation Guide</h2>
+        <p class="section-desc">From download to desktop in 4 simple steps. ZephyrOS includes a guided installer that handles everything for you.</p>
+
+        <div class="steps">
+            <div class="step">
+                <div class="step-number">1</div>
+                <h3>Download the ISO</h3>
+                <p>Choose your edition above and download the ISO file. Each edition is a standalone bootable image &mdash; no other OS required.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <h3>Create Bootable Media</h3>
+                <p>Flash the ISO to a USB drive using <strong>Balena Etcher</strong> or <strong>Rufus</strong>, or attach it directly to a virtual machine (VirtualBox, QEMU, VMware).</p>
+                <div class="code-block">
+                    <span class="comment"># Linux / macOS</span><br>
+                    <span class="prompt">$</span> sudo dd if=zephyros-scholar.iso of=/dev/sdX bs=4M status=progress
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <h3>Boot & Install</h3>
+                <p>Boot from the USB or ISO. A welcome dialog gives you the option to <strong>Install</strong> or <strong>Try</strong> ZephyrOS. The guided installer handles partitioning, user setup, and bootloader configuration.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">4</div>
+                <h3>First Boot</h3>
+                <p>After installation, reboot into your new system. On first boot, ZephyrOS automatically downloads your edition's AI model. Open a terminal and run <code>zephyros-ai</code> to start chatting.</p>
+                <div class="code-block">
+                    <span class="prompt">$</span> zephyros-ai "Explain how TCP works"
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Requirements -->
+<section class="requirements fade-in" id="requirements">
+    <div class="container">
+        <div class="section-label">Before You Download</div>
+        <h2 class="section-title">System Requirements</h2>
+        <p class="section-desc">ZephyrOS runs on modern x86_64 hardware with UEFI boot support.</p>
+
+        <table class="req-table">
+            <thead>
+                <tr>
+                    <th>Component</th>
+                    <th>Lite / Core</th>
+                    <th>Scholar</th>
+                    <th>Dev / SOC</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>CPU</td>
+                    <td>x86_64, 2 cores</td>
+                    <td>x86_64, 4 cores</td>
+                    <td>x86_64, 4+ cores</td>
+                </tr>
+                <tr>
+                    <td>RAM</td>
+                    <td>4 GB</td>
+                    <td>8 GB</td>
+                    <td>16 GB</td>
+                </tr>
+                <tr>
+                    <td>Storage</td>
+                    <td>20 GB</td>
+                    <td>30 GB</td>
+                    <td>40 GB</td>
+                </tr>
+                <tr>
+                    <td>Boot</td>
+                    <td>UEFI</td>
+                    <td>UEFI</td>
+                    <td>UEFI</td>
+                </tr>
+                <tr>
+                    <td>Network</td>
+                    <td>Required (first boot)</td>
+                    <td>Required (first boot)</td>
+                    <td>Required (first boot)</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="footer-inner">
+            <div class="footer-left">
+                &copy; 2026 ZephyrOS Project. Open source under MIT License.
+            </div>
+            <ul class="footer-links">
+                <li><a href="https://github.com/labjankiness/ZephyrOS-WIP" target="_blank">GitHub</a></li>
+                <li><a href="https://github.com/labjankiness/ZephyrOS-WIP/issues" target="_blank">Report Issue</a></li>
+                <li><a href="https://github.com/labjankiness/ZephyrOS-WIP/blob/main/ROADMAP.md" target="_blank">Roadmap</a></li>
+            </ul>
+        </div>
+    </div>
+</footer>
+
+<!-- Scroll animation -->
+<script>
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+            }
+        });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>

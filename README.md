@@ -1,5 +1,7 @@
 # ZephyrOS
 
+**[Website & Downloads](https://labjankiness.github.io/ZephyrOS-WIP/)**
+
 A minimal, modern Arch-based Linux distribution with a Wayfire Wayland compositor and UEFI Secure Boot support. Inspired by the Windows 11 aesthetic — centered taskbar, frosted launcher, clean animations — without the bloat.
 
 Ships in **5 editions**, each bundling a locally-hosted AI model via Ollama tailored to a specific use case.
@@ -113,10 +115,11 @@ The `zephyros-ai` command provides a unified interface across all editions — i
 
 | Phase | Goal | Status |
 |---|---|---|
-| 1 | VM-stable with Secure Boot, Wayfire desktop | In progress |
-| 1.5 | Edition system with AI model integration | In progress |
-| 2 | Bare metal testing (GPU, Wi-Fi, power management) | Planned |
-| 3 | Public signed ISO release, Microsoft UEFI CA submission | Planned |
+| 1 | VM-stable with Secure Boot, Wayfire desktop | Complete |
+| 1.5 | Edition system with AI model integration | Complete |
+| 2 | Full installer experience (TUI installer, live session) | Complete |
+| 3 | Bare metal testing (GPU, Wi-Fi, power management) | Planned |
+| 4 | Public signed ISO release, Microsoft UEFI CA submission | Planned |
 
 ## Tech Stack
 
