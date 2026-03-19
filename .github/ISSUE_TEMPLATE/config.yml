@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discussions
+    url: https://github.com/labjankiness/ZephyrOS-WIP/discussions
+    about: For general questions, ideas, or community chat — use Discussions instead.
