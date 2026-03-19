@@ -23,6 +23,11 @@
             --text-secondary: #94a3b8;
             --text-muted: #64748b;
             --border: #1e293b;
+            --nav-bg: rgba(10, 14, 26, 0.85);
+            --hero-gradient-from: #ffffff;
+            --hero-gradient-to: #94a3b8;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --code-bg: #111827;
             --scholar: #8b5cf6;
             --dev: #06b6d4;
             --soc: #ef4444;
@@ -32,7 +37,31 @@
             --radius-sm: 10px;
         }
 
-        html { scroll-behavior: smooth; }
+        [data-theme="light"] {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #f1f5f9;
+            --bg-card: #ffffff;
+            --bg-card-hover: #f8fafc;
+            --accent: #2563eb;
+            --accent-light: #2563eb;
+            --accent-glow: rgba(37, 99, 235, 0.15);
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --border: #e2e8f0;
+            --nav-bg: rgba(248, 250, 252, 0.85);
+            --hero-gradient-from: #0f172a;
+            --hero-gradient-to: #334155;
+            --shadow-color: rgba(0, 0, 0, 0.08);
+            --code-bg: #f1f5f9;
+            --scholar: #7c3aed;
+            --dev: #0891b2;
+            --soc: #dc2626;
+            --lite: #16a34a;
+            --core: #4b5563;
+        }
+
+        html { scroll-behavior: smooth; transition: background-color 0.3s, color 0.3s; }
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -43,7 +72,7 @@
         }
 
         a { color: var(--accent-light); text-decoration: none; transition: color 0.2s; }
-        a:hover { color: #93c5fd; }
+        a:hover { color: var(--accent); }
 
         .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
 
@@ -53,7 +82,7 @@
             top: 0;
             width: 100%;
             z-index: 100;
-            background: rgba(10, 14, 26, 0.85);
+            background: var(--nav-bg);
             backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--border);
         }
@@ -96,6 +125,33 @@
             transition: color 0.2s;
         }
         .nav-links a:hover { color: var(--text-primary); }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .theme-toggle {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 18px;
+            color: var(--text-secondary);
+        }
+
+        .theme-toggle:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent);
+            color: var(--text-primary);
+        }
 
         .nav-cta {
             background: var(--accent);
@@ -159,7 +215,7 @@
             font-weight: 800;
             line-height: 1.1;
             margin-bottom: 20px;
-            background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%);
+            background: linear-gradient(135deg, var(--hero-gradient-from) 0%, var(--hero-gradient-to) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -266,7 +322,7 @@
         .feature-card:hover {
             border-color: rgba(59, 130, 246, 0.3);
             transform: translateY(-4px);
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 8px 30px var(--shadow-color);
         }
 
         .feature-icon {
@@ -325,7 +381,7 @@
 
         .edition-card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 12px 40px var(--shadow-color);
         }
 
         .edition-card.scholar::before { background: linear-gradient(90deg, var(--scholar), #a78bfa); }
@@ -582,7 +638,7 @@
         .community-card:hover {
             border-color: rgba(59, 130, 246, 0.3);
             transform: translateY(-4px);
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 8px 30px var(--shadow-color);
         }
 
         .community-icon {
@@ -676,7 +732,10 @@
             <li><a href="#community">Community</a></li>
             <li><a href="https://github.com/labjankiness/ZephyrOS-WIP" target="_blank">GitHub</a></li>
         </ul>
-        <a href="#editions" class="nav-cta">Download</a>
+        <div class="nav-right">
+            <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark mode" title="Toggle light/dark mode">&#9790;</button>
+            <a href="#editions" class="nav-cta">Download</a>
+        </div>
     </div>
 </nav>
 
@@ -1005,8 +1064,9 @@
     </div>
 </footer>
 
-<!-- Scroll animation -->
+<!-- Scroll animation & theme toggle -->
 <script>
+    // Scroll fade-in
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -1016,6 +1076,30 @@
     }, { threshold: 0.1 });
 
     document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+    // Theme toggle
+    const toggle = document.getElementById('themeToggle');
+    const html = document.documentElement;
+
+    function setTheme(theme) {
+        html.setAttribute('data-theme', theme);
+        localStorage.setItem('zephyros-theme', theme);
+        toggle.innerHTML = theme === 'light' ? '&#9728;' : '&#9790;';
+        toggle.title = theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode';
+    }
+
+    // Load saved theme or respect system preference
+    const saved = localStorage.getItem('zephyros-theme');
+    if (saved) {
+        setTheme(saved);
+    } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+        setTheme('light');
+    }
+
+    toggle.addEventListener('click', () => {
+        const current = html.getAttribute('data-theme');
+        setTheme(current === 'light' ? 'dark' : 'light');
+    });
 </script>
 
 </body>
