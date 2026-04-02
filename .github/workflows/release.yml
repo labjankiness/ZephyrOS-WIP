@@ -31,7 +31,11 @@ jobs:
           # build-localrepo needs a non-root user for makepkg
           useradd -m builder
           echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+          
+          # Fix permissions
+          chmod +x build/*.sh build/scripts/*.sh
           chown -R builder:builder .
+          
           # Build the edition
           su builder -c "cd build && ./build-edition.sh ${{ matrix.edition }}"
 
