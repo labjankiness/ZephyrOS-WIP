@@ -26,7 +26,7 @@
 
 #   - fluent-icon-theme-git
 
-#   - archlinux-shim
+#   (archlinux-shim removed — nonexistent AUR package)
 
 #
 
@@ -244,7 +244,7 @@ main() {
 
     # AUR packages we bake into the ISO via a local repo.
 
-    PKGS="adw-gtk3 fluent-icon-theme-git archlinux-shim"
+    PKGS="adw-gtk3 fluent-icon-theme-git"
 
     for p in $PKGS; do
 
