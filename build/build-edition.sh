@@ -333,6 +333,18 @@ main() {
 
     fi
 
+    # Append local repo to profile pacman.conf if AUR packages were built
+    LOCALREPO_ABS=$(cd "$SCRIPT_DIR/localrepo" 2>/dev/null && pwd || true)
+    if [ -n "$LOCALREPO_ABS" ] && [ -f "$LOCALREPO_ABS/zephyros-local.db.tar.gz" ]; then
+        log "Adding local repo to pacman.conf..."
+        cat >>"$PROFILE_TMP/pacman.conf" <<REPOEOF
+
+[zephyros-local]
+SigLevel = Optional TrustAll
+Server = file://$LOCALREPO_ABS
+REPOEOF
+    fi
+
     # --- Build ISO ---
 
     export SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-$(date +%s)}
