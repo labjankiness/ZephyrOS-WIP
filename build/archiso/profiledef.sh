@@ -11,7 +11,7 @@ iso_name="zephyros"
 iso_label="ZEPHYROS_$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y%m)"
 iso_publisher="ZephyrOS Project"
 iso_application="ZephyrOS Live ISO (Wayland/Wayfire, Secure Boot-ready)"
-iso_version="$(date --date=\"@${SOURCE_DATE_EPOCH:-$(date +%s)}\" +%Y.%m.%d)"
+iso_version="$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y.%m.%d)"
 
 # Installation directory (max 8 chars, alphanumeric only)
 install_dir="arch"

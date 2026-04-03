@@ -218,7 +218,7 @@ main() {
     sed -i \
         -e "s|^iso_name=.*|iso_name=\"${ISO_NAME}\"|" \
         -e "s|^iso_application=.*|iso_application=\"${EDITION_LABEL} Live ISO\"|" \
-        -e "s|^iso_label=.*|iso_label=\"${ISO_NAME^^}_\$(date --date=\"@\${SOURCE_DATE_EPOCH:-\$(date +%s)}\" +%Y%m)\"|" \
+        -e "s|^iso_label=.*|iso_label=\"${ISO_NAME^^}_\$(date +%Y%m)\"|" \
         "$PROFILE_TMP/profiledef.sh"
 
     # --- Include merged package list in ISO for the installer ---
