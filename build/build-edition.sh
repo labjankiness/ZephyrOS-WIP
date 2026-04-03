@@ -339,7 +339,7 @@ main() {
 
     log "Running mkarchiso..."
 
-    mkarchiso \
+    sudo mkarchiso \
         -v \
         -w "$WORK_DIR/mkarchiso-work" \
         -o "$OUT_DIR" \
