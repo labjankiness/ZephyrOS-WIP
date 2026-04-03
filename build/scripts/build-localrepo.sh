@@ -42,15 +42,11 @@
 
 set -eu
 
-
-
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 BUILD_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 
 ROOT_DIR=$(CDPATH= cd -- "$BUILD_DIR/.." && pwd)
-
-
 
 LOCALREPO_DIR="$BUILD_DIR/localrepo"
 
@@ -60,23 +56,15 @@ PKGDEST_DIR="$LOCALREPO_DIR"
 
 DB_NAME="zephyros-local"
 
-
-
 LOCALCONF_PATH="$BUILD_DIR/archiso/airootfs/etc/pacman.d/local.conf"
 
-
-
 FORCE=0
-
-
 
 log() {
 
     printf '%s\n' "$*" >&2
 
 }
-
-
 
 abort() {
 
@@ -86,15 +74,11 @@ abort() {
 
 }
 
-
-
 require_cmd() {
 
     command -v "$1" >/dev/null 2>&1 || abort "Required command '$1' not found."
 
 }
-
-
 
 ensure_dir() {
 
@@ -102,15 +86,11 @@ ensure_dir() {
 
 }
 
-
-
 aur_clone_or_update() {
 
     PKG="$1"
 
     DEST="$SRC_DIR/$PKG"
-
-
 
     if [ -d "$DEST/.git" ]; then
 
@@ -138,15 +118,11 @@ aur_clone_or_update() {
 
 }
 
-
-
 build_aur_pkg() {
 
     PKG="$1"
 
     DEST="$SRC_DIR/$PKG"
-
-
 
     if [ "$FORCE" -ne 1 ]; then
 
@@ -162,8 +138,6 @@ build_aur_pkg() {
 
     fi
 
-
-
     log "Building: $PKG"
 
     (
@@ -177,8 +151,6 @@ build_aur_pkg() {
     )
 
 }
-
-
 
 write_localconf() {
 
@@ -206,8 +178,6 @@ write_localconf() {
 
 # of the build.
 
-
-
 [${DB_NAME}]
 
 SigLevel = Optional TrustAll
@@ -218,13 +188,9 @@ EOF
 
 }
 
-
-
 build_repo_db() {
 
     require_cmd repo-add
-
-
 
     DB_PATH="$LOCALREPO_DIR/${DB_NAME}.db.tar.gz"
 
@@ -238,8 +204,6 @@ build_repo_db() {
 
     fi
 
-
-
     log "Creating repo database: $DB_PATH"
 
     # shellcheck disable=SC2086
@@ -247,8 +211,6 @@ build_repo_db() {
     repo-add -n -R "$DB_PATH" $PKGS >/dev/null
 
 }
-
-
 
 main() {
 
@@ -272,25 +234,17 @@ main() {
 
     fi
 
-
-
     require_cmd git
 
     require_cmd makepkg
-
-
 
     ensure_dir "$LOCALREPO_DIR"
 
     ensure_dir "$SRC_DIR"
 
-
-
     # AUR packages we bake into the ISO via a local repo.
 
     PKGS="adw-gtk3 fluent-icon-theme-git archlinux-shim"
-
-
 
     for p in $PKGS; do
 
@@ -304,13 +258,9 @@ main() {
 
     done
 
-
-
     build_repo_db
 
     write_localconf
-
-
 
     log "Local repo ready: $LOCALREPO_DIR"
 
@@ -318,7 +268,4 @@ main() {
 
 }
 
-
-
 main "$@"
-

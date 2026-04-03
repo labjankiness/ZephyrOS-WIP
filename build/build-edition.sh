@@ -38,21 +38,15 @@
 
 set -eu
 
-
-
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 ROOT_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
-
-
 
 EDITIONS_DIR="$ROOT_DIR/editions"
 
 BASE_DIR="$EDITIONS_DIR/base"
 
 ARCHISO_PROFILE="$SCRIPT_DIR/archiso"
-
-
 
 abort() {
 
@@ -62,23 +56,17 @@ abort() {
 
 }
 
-
-
 log() {
 
     printf '[build-edition] %s\n' "$*" >&2
 
 }
 
-
-
 usage() {
 
     cat >&2 <<EOF
 
 Usage: $0 <edition>
-
-
 
 Available editions:
 
@@ -98,8 +86,6 @@ EOF
 
 }
 
-
-
 merge_packages() {
 
     BASE_PKGS="$1"
@@ -107,8 +93,6 @@ merge_packages() {
     EDITION_PKGS="$2"
 
     OUTPUT="$3"
-
-
 
     # Merge both package lists, strip comments and blank lines, deduplicate
 
@@ -122,8 +106,6 @@ merge_packages() {
 
 }
 
-
-
 main() {
 
     if [ "$#" -lt 1 ]; then
@@ -132,13 +114,9 @@ main() {
 
     fi
 
-
-
     EDITION="$1"
 
     EDITION_DIR="$EDITIONS_DIR/$EDITION"
-
-
 
     # Core edition uses base only
 
@@ -148,15 +126,11 @@ main() {
 
     fi
 
-
-
     if [ ! -d "$EDITION_DIR" ] && [ "$EDITION" != "core" ]; then
 
         abort "Unknown edition: $EDITION (no directory at $EDITION_DIR)"
 
     fi
-
-
 
     # Load edition config
 
@@ -172,15 +146,11 @@ main() {
 
     . "$EDITION_CONF"
 
-
-
     log "Building ZephyrOS $EDITION_LABEL"
 
     log "  Edition  : $EDITION"
 
     log "  Model    : ${OLLAMA_MODEL:-none}"
-
-
 
     # --- Prepare a temporary build profile ---
 
@@ -190,19 +160,13 @@ main() {
 
     PROFILE_TMP="$WORK_DIR/profile"
 
-
-
     rm -rf "$WORK_DIR"
 
     mkdir -p "$WORK_DIR" "$OUT_DIR"
 
-
-
     # Copy the base archiso profile
 
     cp -a "$ARCHISO_PROFILE" "$PROFILE_TMP"
-
-
 
     # Merge packages
 
@@ -212,13 +176,9 @@ main() {
 
     merge_packages "$BASE_DIR/packages.x86_64" "$EDITION_PKGS" "$PROFILE_TMP/packages.x86_64"
 
-
-
     PKG_COUNT=$(wc -l < "$PROFILE_TMP/packages.x86_64")
 
     log "  Total packages: $PKG_COUNT"
-
-
 
     # --- Overlay edition airootfs ---
 
@@ -230,8 +190,6 @@ main() {
 
     fi
 
-
-
     # --- Inject first-boot service and config ---
 
     AIROOTFS="$PROFILE_TMP/airootfs"
@@ -242,49 +200,32 @@ main() {
 
     mkdir -p "$AIROOTFS/etc"
 
-
-
     cp "$BASE_DIR/zephyros-firstboot.sh" "$AIROOTFS/usr/local/bin/zephyros-firstboot.sh"
 
     cp "$BASE_DIR/zephyros-firstboot.service" "$AIROOTFS/usr/lib/systemd/system/zephyros-firstboot.service"
 
-
-
     # Symlink to enable the service
 
     ln -sf ../zephyros-firstboot.service \
-
         "$AIROOTFS/usr/lib/systemd/system/multi-user.target.wants/zephyros-firstboot.service"
-
-
 
     # Write edition config into the ISO
 
     cp "$EDITION_CONF" "$AIROOTFS/etc/zephyros-edition.conf"
 
-
-
     # --- Update profiledef.sh for this edition ---
 
     sed -i \
-
         -e "s|^iso_name=.*|iso_name=\"${ISO_NAME}\"|" \
-
         -e "s|^iso_application=.*|iso_application=\"${EDITION_LABEL} Live ISO\"|" \
-
         -e "s|^iso_label=.*|iso_label=\"${ISO_NAME^^}_\$(date --date=\"@\${SOURCE_DATE_EPOCH:-\$(date +%s)}\" +%Y%m)\"|" \
-
         "$PROFILE_TMP/profiledef.sh"
-
-
 
     # --- Include merged package list in ISO for the installer ---
 
     mkdir -p "$AIROOTFS/usr/local/share/zephyros"
 
     cp "$PROFILE_TMP/packages.x86_64" "$AIROOTFS/usr/local/share/zephyros/packages.x86_64"
-
-
 
     # --- Copy AI wrapper script ---
 
@@ -293,8 +234,6 @@ main() {
         cp "$BASE_DIR/airootfs/usr/local/bin/zephyros-ai" "$AIROOTFS/usr/local/bin/zephyros-ai"
 
     fi
-
-
 
     # --- Copy installer and welcome script ---
 
@@ -309,8 +248,6 @@ main() {
         cp "$BASE_DIR/airootfs/usr/local/bin/zephyros-welcome" "$AIROOTFS/usr/local/bin/zephyros-welcome"
 
     fi
-
-
 
     # --- Copy desktop entries ---
 
@@ -344,8 +281,6 @@ main() {
 
     fi
 
-
-
     # Add execute permissions for scripts
 
     # archiso file_permissions format: ["path"]="uid:gid:mode"
@@ -353,7 +288,6 @@ main() {
     if ! grep -q 'zephyros-firstboot' "$PROFILE_TMP/profiledef.sh"; then
 
         sed -i '/^file_permissions=(/a\  ["/usr/local/bin/zephyros-firstboot.sh"]="0:0:755"' \
-
             "$PROFILE_TMP/profiledef.sh"
 
     fi
@@ -361,7 +295,6 @@ main() {
     if ! grep -q 'zephyros-install' "$PROFILE_TMP/profiledef.sh"; then
 
         sed -i '/^file_permissions=(/a\  ["/usr/local/bin/zephyros-install"]="0:0:755"' \
-
             "$PROFILE_TMP/profiledef.sh"
 
     fi
@@ -369,7 +302,6 @@ main() {
     if ! grep -q 'zephyros-ai' "$PROFILE_TMP/profiledef.sh"; then
 
         sed -i '/^file_permissions=(/a\  ["/usr/local/bin/zephyros-ai"]="0:0:755"' \
-
             "$PROFILE_TMP/profiledef.sh"
 
     fi
@@ -377,12 +309,9 @@ main() {
     if ! grep -q 'zephyros-welcome' "$PROFILE_TMP/profiledef.sh"; then
 
         sed -i '/^file_permissions=(/a\  ["/usr/local/bin/zephyros-welcome"]="0:0:755"' \
-
             "$PROFILE_TMP/profiledef.sh"
 
     fi
-
-
 
     # --- Build AUR packages ---
 
@@ -404,34 +333,22 @@ main() {
 
     fi
 
-
-
     # --- Build ISO ---
 
     export SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-$(date +%s)}
 
-
-
     log "Running mkarchiso..."
 
     mkarchiso \
-
         -v \
-
         -w "$WORK_DIR/mkarchiso-work" \
-
         -o "$OUT_DIR" \
-
         "$PROFILE_TMP"
-
-
 
     log "Build complete. Output:"
 
     ls -lh "$OUT_DIR"/${ISO_NAME}* 2>/dev/null || true
 
 }
-
-
 
 main "$@"
