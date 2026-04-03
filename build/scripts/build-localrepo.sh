@@ -146,7 +146,7 @@ build_aur_pkg() {
 
         log "WARNING: Building $PKG with --skippgpcheck (dev builds only)."
 
-        PKGDEST="$PKGDEST_DIR" makepkg -s --noconfirm --skippgpcheck
+        PKGDEST="$PKGDEST_DIR" makepkg -s --noconfirm --skippgpcheck --skipinteg
 
     )
 
