@@ -11,24 +11,19 @@ systemd
 linux
 linux-firmware
 
-# --- Boot & Secure Boot ---
+# --- Boot ---
 grub
 efibootmgr
-archlinux-shim
 sbsigntools
 efitools
 mokutil
 
-# --- Wayland & Wayfire stack ---
+# --- Wayland & compositor ---
 wayland
-wlroots
-wayfire
-wayfire-plugins-extra
-wf-shell
+labwc
 xorg-server-xwayland
 
-# --- Panel & launcher ---
-wf-panel-pi
+# --- Launcher ---
 wofi
 
 # --- Display & GPU ---
@@ -38,7 +33,7 @@ vulkan-intel
 virglrenderer
 
 # --- Fonts ---
-ttf-inter
+inter-font
 noto-fonts
 noto-fonts-emoji
 
@@ -53,10 +48,9 @@ kitty
 zsh
 zsh-completions
 
-# --- GTK theming ---
+# --- GTK theming (AUR packages built via local repo) ---
 adw-gtk3
 fluent-icon-theme-git
-bibata-cursor-theme
 
 # --- Audio ---
 pipewire
