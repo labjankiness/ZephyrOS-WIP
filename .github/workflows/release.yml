@@ -21,7 +21,7 @@ jobs:
     steps:
       - name: Install dependencies
         run: |
-          pacman -Syu --noconfirm archiso git sudo pacman-contrib base-devel fakeroot debugedit
+          pacman -Syu --noconfirm archiso git sudo pacman-contrib base-devel fakeroot debugedit grub mtools libisoburn squashfs-tools
 
       - name: Checkout code
         uses: actions/checkout@v4
