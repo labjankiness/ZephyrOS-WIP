@@ -5,6 +5,7 @@
 # --- Base system ---
 base
 mkinitcpio
+mkinitcpio-archiso
 systemd
 
 # --- Kernel & firmware ---
