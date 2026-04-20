@@ -180,7 +180,17 @@ main() {
 
     log "  Total packages: $PKG_COUNT"
 
-    # --- Overlay edition airootfs ---
+    # --- Overlay base airootfs first (shared across all editions) ---
+
+    if [ "$EDITION" != "core" ] && [ -d "$BASE_DIR/airootfs" ]; then
+
+        log "Applying base airootfs overlay..."
+
+        cp -a "$BASE_DIR/airootfs/." "$PROFILE_TMP/airootfs/"
+
+    fi
+
+    # --- Overlay edition airootfs (edition files win over base) ---
 
     if [ -d "$EDITION_DIR/airootfs" ]; then
 
@@ -309,6 +319,29 @@ main() {
     if ! grep -q 'zephyros-welcome' "$PROFILE_TMP/profiledef.sh"; then
 
         sed -i '/^file_permissions=(/a\  ["/usr/local/bin/zephyros-welcome"]="0:0:755"' \
+            "$PROFILE_TMP/profiledef.sh"
+
+    fi
+
+    # --- Phase 3 diagnostics tools ---
+
+    if ! grep -q 'zephyros-hwreport' "$PROFILE_TMP/profiledef.sh"; then
+
+        sed -i '/^file_permissions=(/a\  ["/usr/local/bin/zephyros-hwreport"]="0:0:755"' \
+            "$PROFILE_TMP/profiledef.sh"
+
+    fi
+
+    if ! grep -q 'zephyros-bootreport' "$PROFILE_TMP/profiledef.sh"; then
+
+        sed -i '/^file_permissions=(/a\  ["/usr/local/bin/zephyros-bootreport"]="0:0:755"' \
+            "$PROFILE_TMP/profiledef.sh"
+
+    fi
+
+    if ! grep -q 'zephyros-telemetry-audit' "$PROFILE_TMP/profiledef.sh"; then
+
+        sed -i '/^file_permissions=(/a\  ["/usr/local/bin/zephyros-telemetry-audit"]="0:0:755"' \
             "$PROFILE_TMP/profiledef.sh"
 
     fi

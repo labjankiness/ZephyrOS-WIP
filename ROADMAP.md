@@ -60,7 +60,7 @@ Milestones:
 - Merged package list included in ISO so pacstrap can install the full
   edition package set during installation.
 
-## Phase 3 — Bare metal testing + hardware compatibility
+## Phase 3 — Bare metal testing + hardware compatibility [Scaffolded]
 
 Goal: ZephyrOS runs well on a range of real hardware.
 
@@ -75,7 +75,30 @@ Milestones:
 - Telemetry stance:
   - Confirm that no telemetry or tracking packages are shipped by default.
 
-## Phase 4 — Public ISO release
+What landed (scaffolding):
+
+- Driver/firmware coverage in `editions/base/packages.x86_64`: `sof-firmware`,
+  `intel-ucode`/`amd-ucode` microcode, `vulkan-nouveau`, VA-API/VDPAU
+  stacks, `iw`/`wireless-regdb`/`wpa_supplicant`, `bluez`/`bluez-utils`.
+- Power and thermal: `tlp`, `tlp-rdw`, `thermald`, `upower`, `acpid`,
+  `pm-utils` plus a baseline drop-in at `/etc/tlp.d/00-zephyros.conf`.
+  The installer enables `tlp`, `thermald`, and `bluetooth` services on the
+  target system.
+- Diagnostics shipped on every edition:
+  - `zephyros-hwreport` — CPU/GPU/Wi-Fi/BT/audio/firmware snapshot.
+  - `zephyros-bootreport` — `systemd-analyze` wrap with slow-unit flags.
+  - `zephyros-telemetry-audit` — static scan against a deny-list of known
+    telemetry packages/units/hosts.
+
+Still requires bare-metal work:
+
+- Running the ISOs on real Intel/AMD/Nvidia laptops and desktops.
+- Filing compatibility reports (generated via `zephyros-hwreport`) per
+  tested machine.
+- Tuning boot services based on real-world `zephyros-bootreport` output.
+- Verifying suspend/resume across tested chipsets.
+
+## Phase 4 — Public ISO release [Scaffolded]
 
 Goal: polished ZephyrOS ISO with public documentation and a clear Secure Boot
 story.
@@ -93,3 +116,22 @@ Milestones:
   - Developer guide for rebuilding the ISO and contributing changes.
 - Presentation:
   - Website or landing page describing ZephyrOS goals and download links.
+
+What landed (scaffolding):
+
+- Tag-triggered release workflow in `.github/workflows/release.yml`:
+  builds all 5 editions, generates SHA-256 and SHA-512 checksums, GPG-signs
+  ISOs and checksums (conditional on `GPG_PRIVATE_KEY`/`GPG_KEY_ID`/
+  `GPG_PASSPHRASE` secrets), aggregates `SHA256SUMS`/`SHA512SUMS`, and
+  auto-generates release notes with the changelog since the previous tag.
+- Key policy in [KEYS.md](KEYS.md): separation of Release/Shim/Kernel/Module
+  keys, rotation schedule, revocation flow, end-user verification recipe.
+- [USER-GUIDE.md](USER-GUIDE.md) and [DEVELOPER-GUIDE.md](DEVELOPER-GUIDE.md)
+  cover install, verification, upgrades, and the build/contribution loop.
+
+Still requires external action:
+
+- Preparing and submitting the ZephyrOS shim to the Microsoft UEFI CA.
+- Generating the production key set per KEYS.md on offline hardware.
+- Populating the release-signing secrets in the repository.
+- Cutting the first public tag (`v0.x.0`) to exercise the workflow end-to-end.

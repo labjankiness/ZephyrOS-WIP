@@ -73,6 +73,13 @@ zephyros-ai "explain quicksort"          # One-shot query
 ollama run phi3:mini                      # Direct model access
 ```
 
+**Run diagnostics** (inside any edition):
+```bash
+zephyros-hwreport           -o hw.md      # Hardware / driver / firmware report
+zephyros-bootreport         -o boot.md    # systemd-analyze + slow-unit flags
+zephyros-telemetry-audit    -o audit.md   # Scan for telemetry / phone-home packages
+```
+
 **Apply theme** (inside the guest):
 ```bash
 cd theme && ./apply-theme.sh [--light|--dark]
@@ -97,7 +104,10 @@ zephyros/
 ├── vm/                     # QEMU/OVMF launch and Secure Boot validation
 ├── DECISIONS.md            # Design decision rationale
 ├── ROADMAP.md              # 3-phase development plan
-└── SECUREBOOT.md           # Detailed Secure Boot design documentation
+├── SECUREBOOT.md           # Detailed Secure Boot design documentation
+├── KEYS.md                 # Key management and revocation policy
+├── USER-GUIDE.md           # Install, verification, upgrade, diagnostics
+└── DEVELOPER-GUIDE.md      # Build, contribute, release
 ```
 
 ## How Editions Work
@@ -118,8 +128,8 @@ The `zephyros-ai` command provides a unified interface across all editions — i
 | 1 | VM-stable with Secure Boot, Wayfire desktop | Complete |
 | 1.5 | Edition system with AI model integration | Complete |
 | 2 | Full installer experience (TUI installer, live session) | Complete |
-| 3 | Bare metal testing (GPU, Wi-Fi, power management) | Planned |
-| 4 | Public signed ISO release, Microsoft UEFI CA submission | Planned |
+| 3 | Bare metal testing (GPU, Wi-Fi, power management) | Scaffolded (awaits bare-metal runs) |
+| 4 | Public signed ISO release, Microsoft UEFI CA submission | Scaffolded (awaits signing keys + shim submission) |
 
 ## Tech Stack
 

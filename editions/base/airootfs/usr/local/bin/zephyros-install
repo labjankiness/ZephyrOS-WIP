@@ -312,6 +312,13 @@ HOSTS
         echo "65"; echo "XXX"; echo "Enabling services..."; echo "XXX"
         arch-chroot "$MOUNT_DIR" systemctl enable NetworkManager >> "$LOG" 2>&1
         arch-chroot "$MOUNT_DIR" systemctl enable systemd-timesyncd >> "$LOG" 2>&1
+        # Phase 3: power, thermal, bluetooth. Harmless on desktops / AMD hosts.
+        arch-chroot "$MOUNT_DIR" systemctl enable tlp.service >> "$LOG" 2>&1 || true
+        arch-chroot "$MOUNT_DIR" systemctl enable thermald.service >> "$LOG" 2>&1 || true
+        arch-chroot "$MOUNT_DIR" systemctl enable bluetooth.service >> "$LOG" 2>&1 || true
+        # TLP and systemd-rfkill conflict on resume; mask per TLP upstream guidance.
+        arch-chroot "$MOUNT_DIR" systemctl mask systemd-rfkill.service >> "$LOG" 2>&1 || true
+        arch-chroot "$MOUNT_DIR" systemctl mask systemd-rfkill.socket >> "$LOG" 2>&1 || true
 
         echo "75"; echo "XXX"; echo "Copying edition configuration..."; echo "XXX"
         # Copy edition config
@@ -334,6 +341,20 @@ HOSTS
         if [ -f /usr/local/bin/zephyros-ai ]; then
             cp /usr/local/bin/zephyros-ai "$MOUNT_DIR/usr/local/bin/zephyros-ai"
             chmod 755 "$MOUNT_DIR/usr/local/bin/zephyros-ai"
+        fi
+
+        # Copy Phase 3 diagnostic tools (hwreport / bootreport / telemetry-audit)
+        for tool in zephyros-hwreport zephyros-bootreport zephyros-telemetry-audit; do
+            if [ -f "/usr/local/bin/$tool" ]; then
+                cp "/usr/local/bin/$tool" "$MOUNT_DIR/usr/local/bin/$tool"
+                chmod 755 "$MOUNT_DIR/usr/local/bin/$tool"
+            fi
+        done
+
+        # Copy TLP baseline drop-in if present in the live image
+        if [ -f /etc/tlp.d/00-zephyros.conf ]; then
+            mkdir -p "$MOUNT_DIR/etc/tlp.d"
+            cp /etc/tlp.d/00-zephyros.conf "$MOUNT_DIR/etc/tlp.d/00-zephyros.conf"
         fi
 
         echo "85"; echo "XXX"; echo "Applying ZephyrOS theme..."; echo "XXX"

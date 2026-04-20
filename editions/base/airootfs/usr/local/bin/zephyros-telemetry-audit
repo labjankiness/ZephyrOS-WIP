@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+#
+# zephyros-telemetry-audit — Confirm ZephyrOS isn't shipping telemetry.
+#
+# ZephyrOS's stance (DECISIONS.md): no tracking, no phone-home, no bundled
+# analytics. This script verifies that by scanning the installed package set,
+# active services, timers, and hosts file against a deny-list of known
+# telemetry / phone-home / crash-reporting packages from the broader Linux
+# ecosystem. Its output is advisory — any hit should be investigated.
+#
+# Usage:
+#   zephyros-telemetry-audit              # stdout
+#   zephyros-telemetry-audit -o audit.md  # file
+#   zephyros-telemetry-audit --strict     # exit 1 on any finding (CI use)
+#
+set -u
+
+OUTPUT=""
+STRICT=0
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -o|--output) OUTPUT="${2:-}"; shift 2 ;;
+        --strict)    STRICT=1; shift ;;
+        -h|--help)   sed -n '3,15p' "$0"; exit 0 ;;
+        *)           printf 'Unknown argument: %s\n' "$1" >&2; exit 2 ;;
+    esac
+done
+
+# Packages known to collect or transmit telemetry in other distros.
+# Presence in ZephyrOS is a regression and should be removed.
+DENY_PACKAGES="
+popularity-contest
+ubuntu-report
+whoopsie
+apport
+kerneloops
+zeitgeist
+zeitgeist-core
+zeitgeist-datahub
+tracker3
+tracker3-miners
+snapd
+mozilla-telemetry
+chrome-remote-desktop
+"
+
+# Services/timers whose presence warrants a closer look.
+SUSPECT_UNITS="
+whoopsie.service
+apport.service
+motd-news.timer
+ubuntu-advantage.service
+ua-timer.timer
+update-notifier.service
+snapd.service
+"
+
+# Hostnames that ZephyrOS should never be talking to by default.
+# We only check /etc/hosts for explicit allow-entries; outbound traffic
+# must be inspected separately with a network monitor.
+SUSPECT_HOSTS="
+telemetry.mozilla.org
+incoming.telemetry.mozilla.org
+pop-con.debian.org
+motd.ubuntu.com
+api.snapcraft.io
+"
+
+findings=0
+
+emit() {
+    printf '# ZephyrOS telemetry audit\n\n'
+    printf -- '- Generated: %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+    printf -- '- Mode: %s\n\n' "$([ "$STRICT" -eq 1 ] && echo strict || echo advisory)"
+
+    printf '## Packages\n\n'
+    if command -v pacman >/dev/null 2>&1; then
+        printf '```\n'
+        for pkg in $DENY_PACKAGES; do
+            if pacman -Qq "$pkg" >/dev/null 2>&1; then
+                printf 'FOUND: %s\n' "$pkg"
+                findings=$((findings+1))
+            fi
+        done
+        [ "$findings" -eq 0 ] && printf 'ok: no deny-listed packages installed\n'
+        printf '```\n\n'
+    else
+        printf '_pacman unavailable — skipping package check_\n\n'
+    fi
+
+    printf '## Systemd units\n\n'
+    if command -v systemctl >/dev/null 2>&1; then
+        printf '```\n'
+        unit_hits=0
+        for u in $SUSPECT_UNITS; do
+            # list-unit-files shows both installed and enabled; either is a signal.
+            if systemctl list-unit-files "$u" --no-legend 2>/dev/null | grep -q .; then
+                state=$(systemctl is-enabled "$u" 2>/dev/null || echo "unknown")
+                printf 'FOUND: %s (state=%s)\n' "$u" "$state"
+                unit_hits=$((unit_hits+1))
+                findings=$((findings+1))
+            fi
+        done
+        [ "$unit_hits" -eq 0 ] && printf 'ok: no suspect units present\n'
+        printf '```\n\n'
+    fi
+
+    printf '## /etc/hosts\n\n'
+    if [ -r /etc/hosts ]; then
+        printf '```\n'
+        host_hits=0
+        for h in $SUSPECT_HOSTS; do
+            if grep -qF "$h" /etc/hosts 2>/dev/null; then
+                printf 'FOUND entry for: %s\n' "$h"
+                host_hits=$((host_hits+1))
+                findings=$((findings+1))
+            fi
+        done
+        [ "$host_hits" -eq 0 ] && printf 'ok: no suspect hosts mapped\n'
+        printf '```\n\n'
+    fi
+
+    printf '## MOTD news / legal\n\n'
+    printf '```\n'
+    if [ -f /etc/update-motd.d/50-motd-news ]; then
+        printf 'FOUND: /etc/update-motd.d/50-motd-news (Ubuntu motd-news)\n'
+        findings=$((findings+1))
+    else
+        printf 'ok: no motd-news hook\n'
+    fi
+    printf '```\n\n'
+
+    printf '## Summary\n\n'
+    if [ "$findings" -eq 0 ]; then
+        printf -- '- result: **clean** (0 findings)\n'
+    else
+        printf -- '- result: **%s finding(s)** — investigate and remove.\n' "$findings"
+    fi
+    printf -- '- scope: this is a static audit. Outbound traffic must still be verified with a network monitor (e.g. `tcpdump`, `nethogs`) during a typical session.\n'
+}
+
+if [ -n "$OUTPUT" ]; then
+    emit > "$OUTPUT"
+else
+    emit
+fi
+
+if [ "$STRICT" -eq 1 ] && [ "$findings" -gt 0 ]; then
+    exit 1
+fi
+exit 0

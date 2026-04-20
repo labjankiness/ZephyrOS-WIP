@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag name for a manual dry-run release (e.g. v0.0.0-test)'
+        required: false
 
 jobs:
   build:
@@ -21,7 +25,9 @@ jobs:
     steps:
       - name: Install dependencies
         run: |
-          pacman -Syu --noconfirm archiso git sudo pacman-contrib base-devel fakeroot debugedit grub mtools libisoburn squashfs-tools
+          pacman -Syu --noconfirm \
+            archiso git sudo pacman-contrib base-devel fakeroot debugedit \
+            grub mtools libisoburn squashfs-tools gnupg coreutils
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -31,18 +37,140 @@ jobs:
           # build-localrepo needs a non-root user for makepkg
           useradd -m builder
           echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-          
-          # Fix permissions
+
           chmod +x build/*.sh build/scripts/*.sh
           chown -R builder:builder .
-          
-          # Build the edition
+
           su builder -c "cd build && ./build-edition.sh ${{ matrix.edition }}"
 
-      - name: Upload ISO to Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Generate checksums
+        working-directory: build/out
+        run: |
+          for iso in *.iso; do
+            [ -f "$iso" ] || continue
+            sha256sum "$iso"  > "${iso}.sha256"
+            sha512sum "$iso"  > "${iso}.sha512"
+          done
+          ls -lh
+
+      - name: Import GPG signing key
+        if: ${{ env.GPG_PRIVATE_KEY != '' }}
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          gpg --list-secret-keys --keyid-format LONG
+
+      - name: Sign ISO and checksums
+        if: ${{ env.GPG_PRIVATE_KEY != '' }}
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
+        working-directory: build/out
+        run: |
+          for f in *.iso *.sha256 *.sha512; do
+            [ -f "$f" ] || continue
+            gpg --batch --yes \
+                --pinentry-mode loopback \
+                --passphrase "$GPG_PASSPHRASE" \
+                --local-user "$GPG_KEY_ID" \
+                --detach-sign --armor "$f"
+          done
+          ls -lh
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
         with:
-          files: build/out/*.iso
+          name: zephyros-${{ matrix.edition }}
+          path: |
+            build/out/*.iso
+            build/out/*.sha256
+            build/out/*.sha512
+            build/out/*.asc
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Collect release files
+        run: |
+          mkdir -p release
+          find artifacts -type f \( \
+              -name '*.iso' -o \
+              -name '*.sha256' -o \
+              -name '*.sha512' -o \
+              -name '*.asc' \
+          \) -exec cp {} release/ \;
+          # Combined checksum manifest for convenience
+          ( cd release && sha256sum *.iso > SHA256SUMS || true )
+          ( cd release && sha512sum *.iso > SHA512SUMS || true )
+          ls -lh release/
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          TAG="${GITHUB_REF##refs/tags/}"
+          PREV="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
+          {
+            echo "## ZephyrOS ${TAG}"
+            echo
+            echo "Five editions built from a shared base:"
+            echo
+            echo "| Edition | ISO | SHA-256 |"
+            echo "|---|---|---|"
+            for iso in release/*.iso; do
+              [ -f "$iso" ] || continue
+              name=$(basename "$iso")
+              sum=$(sha256sum "$iso" | awk '{print $1}')
+              short="${sum:0:12}…"
+              echo "| $(echo "$name" | sed 's/zephyros-//; s/\.iso$//') | \`$name\` | \`$short\` |"
+            done
+            echo
+            echo "### Verification"
+            echo
+            echo '```sh'
+            echo "# Verify checksums"
+            echo "sha256sum -c SHA256SUMS"
+            echo "# Verify signature (after importing the ZephyrOS signing key)"
+            echo "gpg --verify zephyros-<edition>.iso.asc zephyros-<edition>.iso"
+            echo '```'
+            echo
+            if [ -n "$PREV" ]; then
+              echo "### Changes since $PREV"
+              echo
+              git log --pretty=format:'- %s (%h)' "$PREV..$TAG"
+              echo
+            fi
+          } > release-notes.md
+          cat release-notes.md
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.iso
+            release/*.sha256
+            release/*.sha512
+            release/*.asc
+            release/SHA256SUMS
+            release/SHA512SUMS
+          body_path: release-notes.md
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
