@@ -1,0 +1,15 @@
+# ZephyrOS Revocation Manifest
+#
+# This file lists keys, certificates, and image hashes that ZephyrOS
+# has revoked. Consult KEYS.md §5 for the full revocation policy.
+#
+# Format (one record per block, blank line between records):
+#
+#   type:        gpg | x509 | image
+#   id:          <fingerprint or sha256>
+#   subject:     <human-readable description>
+#   reason:      <short reason — leak, rotation, lost-passphrase, etc.>
+#   revoked-utc: <YYYY-MM-DDTHH:MM:SSZ>
+#   replaced-by: <fingerprint of replacement, if any>
+#
+# Currently no revocations have been issued.

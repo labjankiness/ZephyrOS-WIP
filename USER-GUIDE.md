@@ -101,6 +101,17 @@ tlp-stat -b            # battery detail
 
 Thermal throttling on Intel CPUs is handled by `thermald` (no user action).
 
+> **Note:** ZephyrOS uses `tlp` for power management. `tlp` and
+> `power-profiles-daemon` (PPD) cannot run together — installing PPD will
+> mask `tlp` and silently change behavior. If you prefer PPD (e.g. for the
+> GNOME power-mode UI), explicitly disable `tlp.service` first:
+>
+> ```sh
+> sudo systemctl disable --now tlp.service
+> sudo pacman -S power-profiles-daemon
+> sudo systemctl enable --now power-profiles-daemon.service
+> ```
+
 ## 7. Hardware and boot diagnostics
 
 ZephyrOS ships three diagnostic wrappers that produce Markdown reports —
@@ -161,4 +172,4 @@ When filing a hardware or boot issue, please attach:
    install.
 4. `journalctl -b -p warning` for the affected boot.
 
-Open issues at <https://github.com/labjankiness/zephyros/issues>.
+Open issues at <https://github.com/labjankiness/ZephyrOS/issues>.

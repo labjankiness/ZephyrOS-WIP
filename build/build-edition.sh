@@ -237,59 +237,9 @@ main() {
 
     cp "$PROFILE_TMP/packages.x86_64" "$AIROOTFS/usr/local/share/zephyros/packages.x86_64"
 
-    # --- Copy AI wrapper script ---
-
-    if [ -f "$BASE_DIR/airootfs/usr/local/bin/zephyros-ai" ]; then
-
-        cp "$BASE_DIR/airootfs/usr/local/bin/zephyros-ai" "$AIROOTFS/usr/local/bin/zephyros-ai"
-
-    fi
-
-    # --- Copy installer and welcome script ---
-
-    if [ -f "$BASE_DIR/airootfs/usr/local/bin/zephyros-install" ]; then
-
-        cp "$BASE_DIR/airootfs/usr/local/bin/zephyros-install" "$AIROOTFS/usr/local/bin/zephyros-install"
-
-    fi
-
-    if [ -f "$BASE_DIR/airootfs/usr/local/bin/zephyros-welcome" ]; then
-
-        cp "$BASE_DIR/airootfs/usr/local/bin/zephyros-welcome" "$AIROOTFS/usr/local/bin/zephyros-welcome"
-
-    fi
-
-    # --- Copy desktop entries ---
-
-    if [ -d "$BASE_DIR/airootfs/usr/share/applications" ]; then
-
-        mkdir -p "$AIROOTFS/usr/share/applications"
-
-        cp -a "$BASE_DIR/airootfs/usr/share/applications/." "$AIROOTFS/usr/share/applications/"
-
-    fi
-
-    if [ -d "$BASE_DIR/airootfs/etc/skel/Desktop" ]; then
-
-        mkdir -p "$AIROOTFS/etc/skel/Desktop"
-
-        cp -a "$BASE_DIR/airootfs/etc/skel/Desktop/." "$AIROOTFS/etc/skel/Desktop/"
-
-    fi
-
-    if [ -d "$BASE_DIR/airootfs/etc/skel/.config" ]; then
-
-        mkdir -p "$AIROOTFS/etc/skel/.config"
-
-        cp -a "$BASE_DIR/airootfs/etc/skel/.config/." "$AIROOTFS/etc/skel/.config/"
-
-    fi
-
-    if [ -f "$BASE_DIR/airootfs/etc/skel/.zprofile" ]; then
-
-        cp "$BASE_DIR/airootfs/etc/skel/.zprofile" "$AIROOTFS/etc/skel/.zprofile"
-
-    fi
+    # NOTE: scripts and skel files used to be cherry-picked here from
+    # $BASE_DIR/airootfs/. They are now covered by the unconditional base
+    # airootfs overlay above.
 
     # Add execute permissions for scripts
 
