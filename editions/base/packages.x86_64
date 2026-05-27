@@ -11,6 +11,10 @@ systemd
 # --- Kernel & firmware ---
 linux
 linux-firmware
+sof-firmware
+# CPU microcode — GRUB picks the right one at boot
+intel-ucode
+amd-ucode
 
 # --- Boot ---
 grub
@@ -31,7 +35,18 @@ wofi
 mesa
 vulkan-radeon
 vulkan-intel
+vulkan-nouveau
+vulkan-icd-loader
+libva-mesa-driver
+libva-intel-driver
+intel-media-driver
+mesa-vdpau
+libva-utils
+vdpauinfo
 virglrenderer
+# Nvidia path — users with Nvidia cards can install nvidia/nvidia-utils post-install;
+# shipping nouveau + firmware is enough for boot on all three GPU vendors.
+xf86-video-vesa
 
 # --- Fonts ---
 inter-font
@@ -61,6 +76,25 @@ wireplumber
 # --- Networking ---
 networkmanager
 network-manager-applet
+# Wi-Fi / Bluetooth
+iw
+wireless-regdb
+wpa_supplicant
+bluez
+bluez-utils
+# Optional proprietary Wi-Fi firmware (Broadcom wl is AUR; document in hardware guide)
+
+# --- Power management (Phase 3) ---
+# TLP handles laptop power tuning. thermald throttles Intel CPUs to prevent thermal
+# runaway. upower exposes battery state to the desktop.
+tlp
+tlp-rdw
+thermald
+upower
+acpi
+acpid
+# Suspend/hibernate helpers
+pm-utils
 
 # --- Flatpak ---
 flatpak

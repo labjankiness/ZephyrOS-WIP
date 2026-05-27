@@ -180,7 +180,17 @@ main() {
 
     log "  Total packages: $PKG_COUNT"
 
-    # --- Overlay edition airootfs ---
+    # --- Overlay base airootfs first (shared across all editions) ---
+
+    if [ "$EDITION" != "core" ] && [ -d "$BASE_DIR/airootfs" ]; then
+
+        log "Applying base airootfs overlay..."
+
+        cp -a "$BASE_DIR/airootfs/." "$PROFILE_TMP/airootfs/"
+
+    fi
+
+    # --- Overlay edition airootfs (edition files win over base) ---
 
     if [ -d "$EDITION_DIR/airootfs" ]; then
 
@@ -227,59 +237,9 @@ main() {
 
     cp "$PROFILE_TMP/packages.x86_64" "$AIROOTFS/usr/local/share/zephyros/packages.x86_64"
 
-    # --- Copy AI wrapper script ---
-
-    if [ -f "$BASE_DIR/airootfs/usr/local/bin/zephyros-ai" ]; then
-
-        cp "$BASE_DIR/airootfs/usr/local/bin/zephyros-ai" "$AIROOTFS/usr/local/bin/zephyros-ai"
-
-    fi
-
-    # --- Copy installer and welcome script ---
-
-    if [ -f "$BASE_DIR/airootfs/usr/local/bin/zephyros-install" ]; then
-
-        cp "$BASE_DIR/airootfs/usr/local/bin/zephyros-install" "$AIROOTFS/usr/local/bin/zephyros-install"
-
-    fi
-
-    if [ -f "$BASE_DIR/airootfs/usr/local/bin/zephyros-welcome" ]; then
-
-        cp "$BASE_DIR/airootfs/usr/local/bin/zephyros-welcome" "$AIROOTFS/usr/local/bin/zephyros-welcome"
-
-    fi
-
-    # --- Copy desktop entries ---
-
-    if [ -d "$BASE_DIR/airootfs/usr/share/applications" ]; then
-
-        mkdir -p "$AIROOTFS/usr/share/applications"
-
-        cp -a "$BASE_DIR/airootfs/usr/share/applications/." "$AIROOTFS/usr/share/applications/"
-
-    fi
-
-    if [ -d "$BASE_DIR/airootfs/etc/skel/Desktop" ]; then
-
-        mkdir -p "$AIROOTFS/etc/skel/Desktop"
-
-        cp -a "$BASE_DIR/airootfs/etc/skel/Desktop/." "$AIROOTFS/etc/skel/Desktop/"
-
-    fi
-
-    if [ -d "$BASE_DIR/airootfs/etc/skel/.config" ]; then
-
-        mkdir -p "$AIROOTFS/etc/skel/.config"
-
-        cp -a "$BASE_DIR/airootfs/etc/skel/.config/." "$AIROOTFS/etc/skel/.config/"
-
-    fi
-
-    if [ -f "$BASE_DIR/airootfs/etc/skel/.zprofile" ]; then
-
-        cp "$BASE_DIR/airootfs/etc/skel/.zprofile" "$AIROOTFS/etc/skel/.zprofile"
-
-    fi
+    # NOTE: scripts and skel files used to be cherry-picked here from
+    # $BASE_DIR/airootfs/. They are now covered by the unconditional base
+    # airootfs overlay above.
 
     # Add execute permissions for scripts
 
@@ -309,6 +269,29 @@ main() {
     if ! grep -q 'zephyros-welcome' "$PROFILE_TMP/profiledef.sh"; then
 
         sed -i '/^file_permissions=(/a\  ["/usr/local/bin/zephyros-welcome"]="0:0:755"' \
+            "$PROFILE_TMP/profiledef.sh"
+
+    fi
+
+    # --- Phase 3 diagnostics tools ---
+
+    if ! grep -q 'zephyros-hwreport' "$PROFILE_TMP/profiledef.sh"; then
+
+        sed -i '/^file_permissions=(/a\  ["/usr/local/bin/zephyros-hwreport"]="0:0:755"' \
+            "$PROFILE_TMP/profiledef.sh"
+
+    fi
+
+    if ! grep -q 'zephyros-bootreport' "$PROFILE_TMP/profiledef.sh"; then
+
+        sed -i '/^file_permissions=(/a\  ["/usr/local/bin/zephyros-bootreport"]="0:0:755"' \
+            "$PROFILE_TMP/profiledef.sh"
+
+    fi
+
+    if ! grep -q 'zephyros-telemetry-audit' "$PROFILE_TMP/profiledef.sh"; then
+
+        sed -i '/^file_permissions=(/a\  ["/usr/local/bin/zephyros-telemetry-audit"]="0:0:755"' \
             "$PROFILE_TMP/profiledef.sh"
 
     fi

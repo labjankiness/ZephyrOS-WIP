@@ -1,0 +1,189 @@
+#!/usr/bin/env bash
+#
+# zephyros-hwreport — Hardware compatibility report for ZephyrOS
+#
+# Collects a Markdown report describing the host's CPU, GPU, audio, Wi-Fi,
+# Bluetooth, storage, battery, firmware, and Secure Boot state. The output is
+# intended to be pasted into a GitHub issue for Phase 3 hardware tracking.
+#
+# Usage:
+#   zephyros-hwreport                 # Print report to stdout
+#   zephyros-hwreport -o report.md    # Write to file
+#   zephyros-hwreport --short         # Omit verbose dmesg / lsmod sections
+#
+set -u
+
+OUTPUT=""
+SHORT=0
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -o|--output) OUTPUT="${2:-}"; shift 2 ;;
+        --short)     SHORT=1; shift ;;
+        -h|--help)
+            sed -n '3,14p' "$0"
+            exit 0
+            ;;
+        *) printf 'Unknown argument: %s\n' "$1" >&2; exit 2 ;;
+    esac
+done
+
+have() { command -v "$1" >/dev/null 2>&1; }
+
+run() {
+    # Run a command, prefix each line with "    " for Markdown code block.
+    if have "$1"; then
+        "$@" 2>&1 | sed 's/^/    /' || true
+    else
+        printf '    (%s not installed)\n' "$1"
+    fi
+}
+
+section() { printf '\n## %s\n\n' "$*"; }
+
+emit_report() {
+    printf '# ZephyrOS hardware report\n\n'
+    printf -- '- Generated: %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+    printf -- '- Host: %s\n' "$(uname -n)"
+    printf -- '- Kernel: %s\n' "$(uname -srmo)"
+    if [ -r /etc/zephyros-edition.conf ]; then
+        # shellcheck disable=SC1091
+        . /etc/zephyros-edition.conf 2>/dev/null || true
+        printf -- '- Edition: %s (%s)\n' "${EDITION_LABEL:-unknown}" "${EDITION_NAME:-unknown}"
+    fi
+
+    section "System / firmware"
+    if [ -d /sys/class/dmi/id ]; then
+        for f in sys_vendor product_name product_version bios_vendor bios_version bios_date; do
+            v=$(cat "/sys/class/dmi/id/$f" 2>/dev/null || true)
+            [ -n "$v" ] && printf -- '- %s: %s\n' "$f" "$v"
+        done
+    fi
+    if [ -d /sys/firmware/efi ]; then
+        printf -- '- Firmware: UEFI\n'
+    else
+        printf -- '- Firmware: BIOS (legacy)\n'
+    fi
+
+    section "Secure Boot"
+    if have mokutil; then
+        run mokutil --sb-state
+    else
+        printf '    (mokutil not installed)\n'
+    fi
+
+    section "CPU"
+    if have lscpu; then
+        lscpu 2>/dev/null | grep -E '^(Architecture|Model name|CPU\(s\)|Vendor ID|Virtualization)' | sed 's/^/    /'
+    fi
+    if [ -r /proc/cpuinfo ]; then
+        MICROCODE=$(grep -m1 '^microcode' /proc/cpuinfo | awk '{print $3}')
+        [ -n "$MICROCODE" ] && printf -- '- Microcode revision: %s\n' "$MICROCODE"
+    fi
+
+    section "Memory"
+    if have free; then
+        run free -h
+    fi
+
+    section "GPU"
+    if have lspci; then
+        lspci -nnk 2>/dev/null | awk '/VGA|3D|Display/{print; getline; print; getline; print}' | sed 's/^/    /'
+    fi
+    if have glxinfo; then
+        glxinfo -B 2>/dev/null | grep -E 'vendor|renderer|OpenGL' | sed 's/^/    /' || true
+    fi
+
+    section "Audio"
+    if have lspci; then
+        lspci -nnk 2>/dev/null | awk '/Audio/{print; getline; print; getline; print}' | sed 's/^/    /'
+    fi
+    if have pactl; then
+        pactl info 2>/dev/null | grep -E 'Server Name|Server Version|Default Sink' | sed 's/^/    /' || true
+    fi
+
+    section "Network / Wi-Fi / Bluetooth"
+    if have lspci; then
+        lspci -nnk 2>/dev/null | awk '/Network|Ethernet/{print; getline; print; getline; print}' | sed 's/^/    /'
+    fi
+    if have lsusb; then
+        lsusb 2>/dev/null | grep -iE 'bluetooth|wireless|wlan' | sed 's/^/    /' || true
+    fi
+    if have rfkill; then
+        run rfkill list
+    fi
+    if have nmcli; then
+        nmcli -t -f DEVICE,TYPE,STATE device 2>/dev/null | sed 's/^/    /'
+    fi
+
+    section "Storage"
+    if have lsblk; then
+        lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS,MODEL 2>/dev/null | sed 's/^/    /'
+    fi
+
+    section "Battery / power"
+    if [ -d /sys/class/power_supply ]; then
+        for bat in /sys/class/power_supply/BAT*; do
+            [ -d "$bat" ] || continue
+            printf -- '- %s\n' "$(basename "$bat")"
+            for f in manufacturer model_name status capacity energy_full energy_full_design cycle_count; do
+                v=$(cat "$bat/$f" 2>/dev/null || true)
+                [ -n "$v" ] && printf -- '  - %s: %s\n' "$f" "$v"
+            done
+        done
+    fi
+    if have tlp-stat; then
+        printf -- '- TLP: installed\n'
+    fi
+    if have upower; then
+        upower -d 2>/dev/null | grep -E 'on-battery|daemon-version' | head -5 | sed 's/^/    /' || true
+    fi
+
+    section "Kernel drivers in use"
+    if have lspci; then
+        lspci -k 2>/dev/null | grep -E 'Kernel driver in use' | sort -u | sed 's/^/    /'
+    fi
+
+    section "Missing firmware (dmesg)"
+    if [ "$SHORT" -eq 0 ] && have dmesg; then
+        dmesg 2>/dev/null | grep -iE 'firmware|failed to load' | head -30 | sed 's/^/    /' || true
+    else
+        printf '    (skipped — use full mode to include)\n'
+    fi
+
+    section "Loaded kernel modules (top 30 by size)"
+    if [ "$SHORT" -eq 0 ] && have lsmod; then
+        lsmod | sort -k2 -n -r | head -30 | sed 's/^/    /'
+    else
+        printf '    (skipped)\n'
+    fi
+
+    section "Compatibility summary"
+    # Crude heuristic checks — these are signals, not verdicts.
+    WARN=0
+    if have lspci; then
+        if lspci -k 2>/dev/null | grep -qE 'NVIDIA.*Kernel driver in use: nouveau'; then
+            printf -- '- warn: Nvidia GPU using nouveau; proprietary driver may improve performance\n'
+            WARN=$((WARN+1))
+        fi
+        if lspci -k 2>/dev/null | grep -A3 -iE 'Network controller.*Broadcom' | grep -q 'Kernel driver in use'; then
+            :
+        elif lspci -k 2>/dev/null | grep -iE 'Network controller.*Broadcom' >/dev/null; then
+            printf -- '- warn: Broadcom Wi-Fi detected without driver bound; may need broadcom-wl\n'
+            WARN=$((WARN+1))
+        fi
+    fi
+    if have dmesg && dmesg 2>/dev/null | grep -qiE 'firmware.*failed|failed to load firmware'; then
+        printf -- '- warn: dmesg reports firmware load failures; inspect "Missing firmware" section\n'
+        WARN=$((WARN+1))
+    fi
+    [ "$WARN" -eq 0 ] && printf -- '- no common compatibility warnings detected\n'
+    printf '\n'
+}
+
+if [ -n "$OUTPUT" ]; then
+    emit_report > "$OUTPUT"
+    printf 'Wrote report to %s\n' "$OUTPUT" >&2
+else
+    emit_report
+fi
