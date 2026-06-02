@@ -66,6 +66,27 @@ in DD mode.
 Wayfire starts automatically on `tty1`. If something goes wrong, drop to a
 shell with `Ctrl+Alt+F2` and inspect `/tmp/zephyros-install.log`.
 
+### Installation options
+
+The installer asks a few things beyond disk and user account:
+
+- **Disk encryption (LUKS2)** — optional but recommended for laptops. If you
+  enable it, you choose a passphrase that you'll enter **at every boot** to
+  unlock the disk. Lose it and the data is unrecoverable. Technically: only the
+  root partition is encrypted; the EFI partition (kernel + initramfs) stays
+  unencrypted and is mounted at `/boot`, so there's a single passphrase prompt
+  at boot rather than two.
+- **Keyboard layout & locale** — pick your console keymap (e.g. `us`, `de`,
+  `fr`) and system locale (language + number/date formats). No longer hardcoded
+  to US English.
+- **Swap** — a swapfile sized to your RAM (capped at 8 GiB) is created
+  automatically. On unencrypted installs, hibernation (suspend-to-disk) is
+  wired up via `resume=` as well; on encrypted installs you get swap without
+  hibernation.
+- **Firewall** — a default-deny inbound `nftables` ruleset is installed and
+  enabled. Nothing accepts inbound connections until you open a port in
+  `/etc/nftables.conf` (see the **Firewall** section).
+
 ## 5. First-boot (AI model)
 
 On first boot of any AI-bearing edition, a systemd oneshot
@@ -112,7 +133,30 @@ Thermal throttling on Intel CPUs is handled by `thermald` (no user action).
 > sudo systemctl enable --now power-profiles-daemon.service
 > ```
 
-## 7. Hardware and boot diagnostics
+## 7. Firewall
+
+ZephyrOS ships a default-deny inbound firewall using `nftables`, enabled on
+install. Outbound traffic is allowed; nothing inbound is accepted unless you
+open it.
+
+Inspect the live ruleset:
+
+```sh
+sudo nft list ruleset
+```
+
+To open a port, edit `/etc/nftables.conf` (uncomment one of the example lines
+or add your own), then reload:
+
+```sh
+sudo systemctl reload nftables
+```
+
+For example, to allow incoming SSH, uncomment `tcp dport 22 accept` in the
+`input` chain. The file is commented to show the common cases (SSH, web,
+mDNS, WireGuard).
+
+## 8. Hardware and boot diagnostics
 
 ZephyrOS ships three diagnostic wrappers that produce Markdown reports —
 ideal for pasting into GitHub issues.
@@ -131,7 +175,7 @@ zephyros-telemetry-audit -o /tmp/audit.md
 Run them after any system change you suspect hurt performance or hardware
 support, and attach the report to the issue.
 
-## 8. Updates
+## 9. Updates
 
 ZephyrOS is Arch-based and rolling. Standard pacman commands apply:
 
@@ -145,7 +189,7 @@ ollama pull <model>                   # refresh an AI model
 Major ZephyrOS changes (new editions, new defaults) are announced in release
 notes. Read them before upgrading across tagged releases.
 
-## 9. Secure Boot
+## 10. Secure Boot
 
 On a fresh install, ZephyrOS boots under Secure Boot only if the firmware
 already trusts either the Microsoft UEFI CA (via shim) or you've enrolled
@@ -162,7 +206,7 @@ bootctl status | head -20
 To opt out, disable Secure Boot in firmware — ZephyrOS still boots, just
 without the kernel-integrity guarantee.
 
-## 10. Reporting issues
+## 11. Reporting issues
 
 When filing a hardware or boot issue, please attach:
 

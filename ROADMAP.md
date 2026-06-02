@@ -135,3 +135,68 @@ Still requires external action:
 - Generating the production key set per KEYS.md on offline hardware.
 - Populating the release-signing secrets in the repository.
 - Cutting the first public tag (`v0.x.0`) to exercise the workflow end-to-end.
+
+## Phase 5 — Pre-v1.0 hardening [In progress]
+
+Goal: close the gaps that make a disk install trustworthy enough for a public
+`v1.0`. These are the things a user notices the moment ZephyrOS leaves the VM
+and lands on a real machine they care about.
+
+Milestones:
+
+- **Disk encryption**: optional LUKS2 full-disk encryption in the installer.
+  The ESP is mounted unencrypted at `/boot` (kernel + initramfs) and only the
+  root partition is encrypted, so there is a single passphrase prompt at boot
+  (no GRUB double-unlock).
+- **Swap + hibernation**: installer creates a RAM-sized (capped) swapfile and
+  wires up `resume=` for hibernation on non-encrypted installs.
+- **Firewall**: a default-deny `nftables` ruleset shipped at
+  `/etc/nftables.conf`, with `nftables.service` enabled on install.
+- **Locale + keymap**: installer prompts for both instead of hardcoding
+  `en_US.UTF-8` / `us`.
+- **Security updates**: an update-available notifier and a documented
+  downgrade/rollback path (Btrfs snapshots are a stretch goal).
+
+What landed (this phase):
+
+- `zephyros-install` now offers an encryption prompt, locale/keymap menus,
+  swapfile creation, and enables the firewall on the target.
+- `nftables`, `cryptsetup` added to the base package set;
+  `/etc/nftables.conf` default ruleset shipped.
+
+Still open:
+
+- Update notifier + rollback tooling.
+- Bare-metal verification of the encrypted-boot path.
+
+## Phase 6 — Daily-driver polish [Planned]
+
+Goal: remove the "where is X?" friction so ZephyrOS can be someone's main OS.
+
+Milestones:
+
+- Login greeter + multi-user (e.g. `greetd`/`sddm`) with a lock screen, instead
+  of single-user tty1 autologin.
+- Printing and scanning (CUPS + SANE + common drivers).
+- Backup / snapshots (Btrfs subvolumes in the installer, or Timeshift).
+- NVIDIA proprietary driver opt-in path.
+- Bluetooth GUI (blueman or a panel applet).
+- VPN client + WireGuard GUI.
+- Man pages for the `zephyros-*` tools.
+- GRUB rescue / fallback boot entry.
+
+## Phase 7 — Optional / community [Planned]
+
+Goal: differentiation and niche coverage; much of this is community-contributable
+once the project has users.
+
+Milestones:
+
+- GPU compute for Ollama (CUDA on Nvidia, ROCm on AMD).
+- Firmware updates via `fwupd`/`fwupdmgr`.
+- Container runtime (podman) in non-Dev editions.
+- Accessibility (screen reader, high-contrast theme, zoom).
+- Mobile device support (MTP, android-tools, automount).
+- First-run wizard tour (replaces the basic `zephyros-welcome`).
+- Online documentation site (publish the guides to GitHub Pages).
+- App-store UI (Flatpak-backed).

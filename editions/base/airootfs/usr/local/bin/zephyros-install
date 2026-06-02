@@ -192,18 +192,104 @@ step_user_config() {
         3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && exit 0
     [ -z "$TIMEZONE" ] && TIMEZONE="UTC"
+
+    # Keyboard layout (console keymap). Common subset; "us" default.
+    KEYMAP=$(dialog --backtitle "$BACKTITLE" --title "Keyboard Layout" \
+        --menu "Select a console keyboard layout:" 18 60 8 \
+        "us"      "English (US)" \
+        "uk"      "English (UK)" \
+        "de"      "German" \
+        "fr"      "French (AZERTY)" \
+        "es"      "Spanish" \
+        "it"      "Italian" \
+        "dvorak"  "Dvorak (US)" \
+        "us"      "Other / pick later" \
+        3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && exit 0
+    [ -z "$KEYMAP" ] && KEYMAP="us"
+
+    # System locale. Common UTF-8 subset; en_US.UTF-8 default.
+    LOCALE=$(dialog --backtitle "$BACKTITLE" --title "Locale" \
+        --menu "Select a system locale (language + formats):" 18 60 8 \
+        "en_US.UTF-8" "English (United States)" \
+        "en_GB.UTF-8" "English (United Kingdom)" \
+        "de_DE.UTF-8" "German (Germany)" \
+        "fr_FR.UTF-8" "French (France)" \
+        "es_ES.UTF-8" "Spanish (Spain)" \
+        "it_IT.UTF-8" "Italian (Italy)" \
+        "ja_JP.UTF-8" "Japanese (Japan)" \
+        "zh_CN.UTF-8" "Chinese (Simplified)" \
+        3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && exit 0
+    [ -z "$LOCALE" ] && LOCALE="en_US.UTF-8"
+}
+
+# --- Step 3b: Disk encryption choice ---
+step_encryption() {
+    ENCRYPT=0
+    # dialog goes in the if-condition so `set -e` doesn't abort on "No".
+    # Declining here means a normal unencrypted install — not a cancel.
+    if ! dialog --backtitle "$BACKTITLE" --title "Disk Encryption" \
+        --yesno "Encrypt the root partition with LUKS2?\n\n\
+Strongly recommended for laptops and any portable machine — without it,\n\
+anyone with physical access can read your data.\n\n\
+You will be asked for a passphrase at every boot. If you forget it, the\n\
+data is unrecoverable.\n\n\
+Enable full-disk encryption?" 16 64; then
+        return
+    fi
+
+    if ! command -v cryptsetup >/dev/null 2>&1; then
+        die "cryptsetup is not available in this live environment.\n\nCannot enable encryption."
+    fi
+
+    local p1 p2
+    while true; do
+        # `|| return` keeps these set -e-safe; cancelling falls back to
+        # an unencrypted install rather than aborting the installer.
+        p1=$(dialog --backtitle "$BACKTITLE" --title "Encryption Passphrase" \
+            --insecure --passwordbox "Enter a disk-encryption passphrase:" 10 60 \
+            3>&1 1>&2 2>&3) || return
+        p2=$(dialog --backtitle "$BACKTITLE" --title "Confirm Passphrase" \
+            --insecure --passwordbox "Confirm the disk-encryption passphrase:" 10 60 \
+            3>&1 1>&2 2>&3) || return
+        if [ "$p1" != "$p2" ]; then
+            dialog --backtitle "$BACKTITLE" --title "Mismatch" \
+                --msgbox "Passphrases do not match. Try again." 8 50
+            continue
+        fi
+        if [ -z "$p1" ]; then
+            dialog --backtitle "$BACKTITLE" --title "Empty" \
+                --msgbox "Passphrase cannot be empty. Try again." 8 50
+            continue
+        fi
+        break
+    done
+    LUKS_PASSPHRASE="$p1"
+    ENCRYPT=1
 }
 
 # --- Step 4: Partition and format ---
+#
+# Two layouts:
+#   - Unencrypted: ESP 512MB mounted at /boot/efi, ext4 root mounted at /.
+#   - Encrypted  : ESP 1GiB mounted at /boot (holds kernel + initramfs,
+#                  unencrypted), LUKS2 on the root partition opened as
+#                  /dev/mapper/cryptroot and mounted at /. A single passphrase
+#                  prompt at boot — no GRUB cryptodisk double-unlock.
 step_partition() {
+    # ESP size depends on layout: encrypted keeps kernels on the ESP.
+    local esp_end="+512M"
+    [ "${ENCRYPT:-0}" -eq 1 ] && esp_end="+1024M"
+
     (
         echo "10"; echo "XXX"; echo "Wiping disk..."; echo "XXX"
         run_cmd sgdisk --zap-all "$TARGET_DISK" || true
 
-        echo "25"; echo "XXX"; echo "Creating EFI partition (512MB)..."; echo "XXX"
-        run_cmd sgdisk -n 1:0:+512M -t 1:ef00 -c 1:"EFI" "$TARGET_DISK"
+        echo "20"; echo "XXX"; echo "Creating EFI system partition..."; echo "XXX"
+        run_cmd sgdisk -n 1:0:"$esp_end" -t 1:ef00 -c 1:"EFI" "$TARGET_DISK"
 
-        echo "40"; echo "XXX"; echo "Creating root partition..."; echo "XXX"
+        echo "30"; echo "XXX"; echo "Creating root partition..."; echo "XXX"
         run_cmd sgdisk -n 2:0:0 -t 2:8300 -c 2:"ZephyrOS" "$TARGET_DISK"
 
         # Determine partition names (handles nvme naming: nvmeXnYpZ)
@@ -211,7 +297,6 @@ step_partition() {
         run_cmd partprobe "$TARGET_DISK"
         sleep 1
 
-        echo "55"; echo "XXX"; echo "Formatting EFI partition (FAT32)..."; echo "XXX"
         if echo "$TARGET_DISK" | grep -q "nvme"; then
             EFI_PART="${TARGET_DISK}p1"
             ROOT_PART="${TARGET_DISK}p2"
@@ -220,25 +305,54 @@ step_partition() {
             ROOT_PART="${TARGET_DISK}2"
         fi
 
-        # Save partition paths for later steps
+        # Save partition paths for later steps (subshell can't export upward)
         echo "$EFI_PART" > /tmp/zephyros-efi-part
         echo "$ROOT_PART" > /tmp/zephyros-root-part
 
+        echo "45"; echo "XXX"; echo "Formatting EFI partition (FAT32)..."; echo "XXX"
         run_cmd mkfs.fat -F32 -n "ZEPHYREFI" "$EFI_PART"
 
-        echo "75"; echo "XXX"; echo "Formatting root partition (ext4)..."; echo "XXX"
-        run_cmd mkfs.ext4 -L "ZephyrOS" -F "$ROOT_PART"
+        if [ "${ENCRYPT:-0}" -eq 1 ]; then
+            echo "60"; echo "XXX"; echo "Encrypting root partition (LUKS2)..."; echo "XXX"
+            # Feed the passphrase on stdin (no --key-file, so cryptsetup treats
+            # it as an interactive-equivalent passphrase — exactly what the user
+            # types at boot). --batch-mode skips the confirmation prompt.
+            printf '%s' "$LUKS_PASSPHRASE" | \
+                run_cmd cryptsetup luksFormat --type luks2 --batch-mode "$ROOT_PART"
+            printf '%s' "$LUKS_PASSPHRASE" | \
+                run_cmd cryptsetup luksOpen "$ROOT_PART" cryptroot
+            ROOT_FS="/dev/mapper/cryptroot"
+        else
+            ROOT_FS="$ROOT_PART"
+        fi
+        echo "$ROOT_FS" > /tmp/zephyros-root-fs
+
+        echo "75"; echo "XXX"; echo "Formatting root filesystem (ext4)..."; echo "XXX"
+        run_cmd mkfs.ext4 -L "ZephyrOS" -F "$ROOT_FS"
 
         echo "90"; echo "XXX"; echo "Mounting partitions..."; echo "XXX"
-        run_cmd mount "$ROOT_PART" "$MOUNT_DIR"
-        run_cmd mkdir -p "$MOUNT_DIR/boot/efi"
-        run_cmd mount "$EFI_PART" "$MOUNT_DIR/boot/efi"
+        run_cmd mount "$ROOT_FS" "$MOUNT_DIR"
+        if [ "${ENCRYPT:-0}" -eq 1 ]; then
+            # ESP at /boot — kernel + initramfs live here, unencrypted.
+            run_cmd mkdir -p "$MOUNT_DIR/boot"
+            run_cmd mount "$EFI_PART" "$MOUNT_DIR/boot"
+        else
+            run_cmd mkdir -p "$MOUNT_DIR/boot/efi"
+            run_cmd mount "$EFI_PART" "$MOUNT_DIR/boot/efi"
+        fi
 
         echo "100"; echo "XXX"; echo "Partitioning complete."; echo "XXX"
     ) | dialog --backtitle "$BACKTITLE" --title "Partitioning" --gauge "Preparing disk..." 10 60 0
 
     EFI_PART=$(cat /tmp/zephyros-efi-part)
     ROOT_PART=$(cat /tmp/zephyros-root-part)
+    ROOT_FS=$(cat /tmp/zephyros-root-fs)
+
+    # LUKS UUID of the underlying partition — needed for the kernel cmdline.
+    if [ "${ENCRYPT:-0}" -eq 1 ]; then
+        LUKS_UUID=$(cryptsetup luksUUID "$ROOT_PART")
+        log "LUKS UUID: $LUKS_UUID"
+    fi
 }
 
 # --- Step 5: Install base system ---
@@ -276,15 +390,43 @@ step_configure() {
         echo "5"; echo "XXX"; echo "Generating fstab..."; echo "XXX"
         genfstab -U "$MOUNT_DIR" >> "$MOUNT_DIR/etc/fstab"
 
+        echo "10"; echo "XXX"; echo "Creating swapfile..."; echo "XXX"
+        # Size swap to RAM, capped at 8 GiB. Enough for OOM relief; full RAM
+        # would only matter for hibernation, which we handle best-effort below.
+        SWAP_MB=$(awk '/MemTotal/ {mb=int($2/1024); print (mb>8192?8192:mb)}' /proc/meminfo)
+        [ -z "$SWAP_MB" ] && SWAP_MB=2048
+        if ! fallocate -l "${SWAP_MB}M" "$MOUNT_DIR/swapfile" 2>>"$LOG"; then
+            dd if=/dev/zero of="$MOUNT_DIR/swapfile" bs=1M count="$SWAP_MB" >>"$LOG" 2>&1
+        fi
+        chmod 600 "$MOUNT_DIR/swapfile"
+        run_cmd mkswap "$MOUNT_DIR/swapfile"
+        echo "/swapfile none swap defaults 0 0" >> "$MOUNT_DIR/etc/fstab"
+
+        # Hibernation (resume) — only attempted on unencrypted ext4 root, where
+        # computing the swapfile's physical offset is reliable. With LUKS the
+        # offset/UUID handling is fragile, so we ship swap-only there.
+        RESUME_PARAMS=""
+        if [ "${ENCRYPT:-0}" -ne 1 ]; then
+            SWAP_OFFSET=$(filefrag -v "$MOUNT_DIR/swapfile" 2>/dev/null \
+                | awk '$1=="0:" {print substr($4, 1, length($4)-2); exit}')
+            RESUME_UUID=$(blkid -s UUID -o value "$ROOT_FS" 2>/dev/null)
+            if [ -n "$SWAP_OFFSET" ] && [ -n "$RESUME_UUID" ]; then
+                RESUME_PARAMS="resume=UUID=${RESUME_UUID} resume_offset=${SWAP_OFFSET}"
+                log "Hibernation enabled: $RESUME_PARAMS"
+            fi
+        fi
+
         echo "15"; echo "XXX"; echo "Setting timezone ($TIMEZONE)..."; echo "XXX"
         arch-chroot "$MOUNT_DIR" ln -sf "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime 2>>"$LOG" || \
             arch-chroot "$MOUNT_DIR" ln -sf /usr/share/zoneinfo/UTC /etc/localtime 2>>"$LOG"
         arch-chroot "$MOUNT_DIR" hwclock --systohc 2>>"$LOG"
 
-        echo "25"; echo "XXX"; echo "Setting locale..."; echo "XXX"
-        echo "en_US.UTF-8 UTF-8" > "$MOUNT_DIR/etc/locale.gen"
+        echo "25"; echo "XXX"; echo "Setting locale ($LOCALE) and keymap ($KEYMAP)..."; echo "XXX"
+        echo "${LOCALE} ${LOCALE##*.}" > "$MOUNT_DIR/etc/locale.gen"
         arch-chroot "$MOUNT_DIR" locale-gen >> "$LOG" 2>&1
-        echo "LANG=en_US.UTF-8" > "$MOUNT_DIR/etc/locale.conf"
+        echo "LANG=${LOCALE}" > "$MOUNT_DIR/etc/locale.conf"
+        # Console keymap (also picked up as the default for Wayland/labwc).
+        echo "KEYMAP=${KEYMAP}" > "$MOUNT_DIR/etc/vconsole.conf"
 
         echo "35"; echo "XXX"; echo "Setting hostname ($HOSTNAME)..."; echo "XXX"
         echo "$HOSTNAME" > "$MOUNT_DIR/etc/hostname"
@@ -303,9 +445,43 @@ HOSTS
         echo "%wheel ALL=(ALL:ALL) ALL" > "$MOUNT_DIR/etc/sudoers.d/wheel"
         chmod 440 "$MOUNT_DIR/etc/sudoers.d/wheel"
 
+        echo "50"; echo "XXX"; echo "Configuring initramfs hooks..."; echo "XXX"
+        # Adjust mkinitcpio HOOKS for encryption and/or hibernation, then
+        # regenerate the initramfs so the changes take effect at boot.
+        MKICONF="$MOUNT_DIR/etc/mkinitcpio.conf"
+        if [ "${ENCRYPT:-0}" -eq 1 ] && ! grep -q '\bencrypt\b' "$MKICONF"; then
+            # 'encrypt' must run before 'filesystems' to unlock root.
+            sed -i 's/\bfilesystems\b/encrypt filesystems/' "$MKICONF"
+        fi
+        if [ -n "$RESUME_PARAMS" ] && ! grep -q '\bresume\b' "$MKICONF"; then
+            # 'resume' must run after 'filesystems'.
+            sed -i 's/\bfilesystems\b/filesystems resume/' "$MKICONF"
+        fi
+        arch-chroot "$MOUNT_DIR" mkinitcpio -P >> "$LOG" 2>&1 || true
+
         echo "55"; echo "XXX"; echo "Installing GRUB bootloader..."; echo "XXX"
+        # Assemble kernel command line: encryption + hibernation params.
+        EXTRA_CMDLINE=""
+        if [ "${ENCRYPT:-0}" -eq 1 ]; then
+            EXTRA_CMDLINE="cryptdevice=UUID=${LUKS_UUID}:cryptroot root=/dev/mapper/cryptroot"
+        fi
+        if [ -n "$RESUME_PARAMS" ]; then
+            EXTRA_CMDLINE="${EXTRA_CMDLINE:+$EXTRA_CMDLINE }${RESUME_PARAMS}"
+        fi
+        if [ -n "$EXTRA_CMDLINE" ]; then
+            # Append our params inside the existing GRUB_CMDLINE_LINUX_DEFAULT="...".
+            sed -i "s|^\(GRUB_CMDLINE_LINUX_DEFAULT=\".*\)\"|\1 ${EXTRA_CMDLINE}\"|" \
+                "$MOUNT_DIR/etc/default/grub"
+        fi
+
+        # With encryption the ESP is mounted at /boot; otherwise at /boot/efi.
+        if [ "${ENCRYPT:-0}" -eq 1 ]; then
+            GRUB_EFI_DIR="/boot"
+        else
+            GRUB_EFI_DIR="/boot/efi"
+        fi
         arch-chroot "$MOUNT_DIR" grub-install --target=x86_64-efi \
-            --efi-directory=/boot/efi --bootloader-id=ZephyrOS \
+            --efi-directory="$GRUB_EFI_DIR" --bootloader-id=ZephyrOS \
             --recheck >> "$LOG" 2>&1 || die "GRUB installation failed."
         arch-chroot "$MOUNT_DIR" grub-mkconfig -o /boot/grub/grub.cfg >> "$LOG" 2>&1
 
@@ -319,6 +495,8 @@ HOSTS
         # TLP and systemd-rfkill conflict on resume; mask per TLP upstream guidance.
         arch-chroot "$MOUNT_DIR" systemctl mask systemd-rfkill.service >> "$LOG" 2>&1 || true
         arch-chroot "$MOUNT_DIR" systemctl mask systemd-rfkill.socket >> "$LOG" 2>&1 || true
+        # Phase 5: firewall (default-deny inbound). Ruleset shipped at /etc/nftables.conf.
+        arch-chroot "$MOUNT_DIR" systemctl enable nftables.service >> "$LOG" 2>&1 || true
 
         echo "75"; echo "XXX"; echo "Copying edition configuration..."; echo "XXX"
         # Copy edition config
@@ -355,6 +533,11 @@ HOSTS
         if [ -f /etc/tlp.d/00-zephyros.conf ]; then
             mkdir -p "$MOUNT_DIR/etc/tlp.d"
             cp /etc/tlp.d/00-zephyros.conf "$MOUNT_DIR/etc/tlp.d/00-zephyros.conf"
+        fi
+
+        # Copy the ZephyrOS firewall ruleset over the nftables package default.
+        if [ -f /etc/nftables.conf ]; then
+            cp /etc/nftables.conf "$MOUNT_DIR/etc/nftables.conf"
         fi
 
         echo "85"; echo "XXX"; echo "Applying ZephyrOS theme..."; echo "XXX"
@@ -415,16 +598,26 @@ step_finish() {
     # Unmount
     log "Unmounting partitions..."
     umount -R "$MOUNT_DIR" >> "$LOG" 2>&1 || true
+    if [ "${ENCRYPT:-0}" -eq 1 ]; then
+        cryptsetup luksClose cryptroot >> "$LOG" 2>&1 || true
+    fi
+
+    local enc_status="No"
+    [ "${ENCRYPT:-0}" -eq 1 ] && enc_status="Yes (LUKS2)"
 
     dialog --backtitle "$BACKTITLE" --title "Installation Complete!" \
         --yesno "ZephyrOS $EDITION_LABEL has been installed successfully!\n\n\
-User:     $USERNAME\n\
-Hostname: $HOSTNAME\n\
-Timezone: $TIMEZONE\n\
-AI Model: ${OLLAMA_MODEL:-None}\n\n\
+User:       $USERNAME\n\
+Hostname:   $HOSTNAME\n\
+Timezone:   $TIMEZONE\n\
+Locale:     $LOCALE\n\
+Keymap:     $KEYMAP\n\
+Encrypted:  $enc_status\n\
+Firewall:   nftables (default-deny inbound)\n\
+AI Model:   ${OLLAMA_MODEL:-None}\n\n\
 On first boot, the AI model will be automatically downloaded\n\
 (requires internet connection).\n\n\
-Remove the installation media and reboot now?" 18 60
+Remove the installation media and reboot now?" 22 64
 
     if [ $? -eq 0 ]; then
         reboot
@@ -447,6 +640,7 @@ main() {
 
     step_welcome
     step_select_disk
+    step_encryption
     step_user_config
     step_partition
     step_install

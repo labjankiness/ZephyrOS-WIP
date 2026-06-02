@@ -82,6 +82,11 @@ wireless-regdb
 wpa_supplicant
 bluez
 bluez-utils
+
+# --- Firewall (Phase 5) ---
+# Default-deny inbound ruleset shipped at /etc/nftables.conf; service enabled
+# on the installed system by the installer.
+nftables
 # Optional proprietary Wi-Fi firmware (Broadcom wl is AUR; document in hardware guide)
 
 # --- Power management (Phase 3) ---
@@ -112,6 +117,9 @@ gptfdisk
 dosfstools
 e2fsprogs
 parted
+# Disk encryption (Phase 5) — needed in the live env to luksFormat the target
+# and on the installed system to unlock root at boot.
+cryptsetup
 
 # --- AI runtime (shared across all AI editions) ---
 ollama
