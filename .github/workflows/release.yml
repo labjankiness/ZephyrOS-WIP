@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        edition: [core, scholar, dev, soc, lite]
+        edition: [core, scholar, dev, soc, lite, hardened]
     steps:
       - name: Install dependencies
         run: |

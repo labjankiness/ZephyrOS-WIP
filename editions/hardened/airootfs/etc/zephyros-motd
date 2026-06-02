@@ -1,0 +1,21 @@
+
+  ████████ ZephyrOS Hardened ████████
+
+  Locked-down kernel · MAC enforced · USB controlled · audit on.
+
+  This edition is built for SOC and offensive-security work. Treat it as a
+  trust boundary, not a daily driver:
+
+    • Kernel:    linux-hardened (boots by default on installed systems)
+    • MAC:       AppArmor enforcing
+    • Audit:     auditd active — see /var/log/audit/
+    • USB:       USBGuard active — new devices must be explicitly trusted
+    • Sandbox:   firejail / bubblewrap available
+    • Sysctl:    network + memory hardening at /etc/sysctl.d/99-zephyros-hardening.conf
+    • IDS:       AIDE + rkhunter installed (run `sudo aide --init` after install)
+
+  Pentest toolkit pre-installed:
+    nmap · masscan · wireshark · hashcat · john · hydra · sqlmap · nikto
+    aircrack-ng · radare2 · binwalk · sleuthkit · ffuf · gobuster · …
+
+  See /usr/share/doc/zephyros-hardened/HARDENING.md for the full guide.

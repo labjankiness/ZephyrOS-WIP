@@ -62,6 +62,61 @@ The script:
 All five editions build from the same `build/archiso/` profile — edition
 differences come entirely from the overlay mechanism.
 
+## 3.5 Building the Raspberry Pi (aarch64) image
+
+ZephyrOS has a separate cross-build pipeline for ARM. It uses Arch Linux ARM
+as the base (archiso doesn't target aarch64) and `qemu-user-static` to chroot
+into the ARM rootfs from an x86_64 host.
+
+Host requirements (Ubuntu/Debian):
+
+```sh
+sudo apt-get install qemu-user-static binfmt-support \
+    parted dosfstools e2fsprogs arch-install-scripts libarchive-tools
+sudo update-binfmts --enable qemu-aarch64
+```
+
+On Arch:
+
+```sh
+sudo pacman -S qemu-user-static qemu-user-static-binfmt \
+    parted dosfstools e2fsprogs arch-install-scripts
+sudo systemctl restart systemd-binfmt
+```
+
+Build:
+
+```sh
+sudo ./build/build-rpi-image.sh --model aarch64 --edition core --size 4
+# → build/out/zephyros-rpi-aarch64-<date>.img
+```
+
+Write to an SD card:
+
+```sh
+sudo dd if=build/out/zephyros-rpi-aarch64-*.img of=/dev/sdX \
+    bs=4M status=progress conv=fsync
+```
+
+The CI workflow `.github/workflows/build-rpi.yml` builds this on
+`ubuntu-latest`, compresses to `.img.xz`, and attaches to tagged releases
+(or runs on `workflow_dispatch`). Expect ~40–70 min per build due to
+pacman running under emulation.
+
+What's different from the x86 ISO build:
+
+- No `archiso` — we extract the ALARM rootfs tarball and customize it
+  directly.
+- No AUR builds — they take far too long under emulation and many AUR
+  packages don't carry an aarch64 path.
+- Curated package subset only (`linux-rpi`, `mesa`, `labwc`, `wofi`,
+  `kitty`, `pipewire`, etc.).
+- Ollama isn't packaged for ALARM yet; the image ships a note telling the
+  user to `curl -fsSL https://ollama.com/install.sh | sh`.
+
+Default credentials on the resulting image: `zephyros:zephyros` (sudo via
+wheel) and `root:zephyros-root`. Change them on first login.
+
 ## 4. Testing in a VM
 
 ```sh

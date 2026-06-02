@@ -1,0 +1,88 @@
+name: Build Raspberry Pi Image (aarch64)
+
+# The RPi build cross-compiles via qemu-user-static. It's slow (40–70 min on
+# ubuntu-latest because pacman runs under emulation) so we don't fire it on
+# every push — only manually or on tags.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      edition:
+        description: 'Edition overlay (core, scholar, dev, soc, lite, hardened)'
+        required: false
+        default: 'core'
+      size:
+        description: 'Image size in GiB'
+        required: false
+        default: '4'
+
+jobs:
+  build-rpi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install host build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            qemu-user-static binfmt-support \
+            parted dosfstools e2fsprogs \
+            arch-install-scripts \
+            libarchive-tools \
+            wget gnupg
+          # Register binfmt handlers for aarch64
+          sudo update-binfmts --enable qemu-aarch64
+          test -e /proc/sys/fs/binfmt_misc/qemu-aarch64
+
+      - name: Build image
+        env:
+          EDITION: ${{ github.event.inputs.edition || 'core' }}
+          SIZE:    ${{ github.event.inputs.size    || '4' }}
+        run: |
+          chmod +x build/build-rpi-image.sh
+          sudo --preserve-env=EDITION,SIZE \
+            ./build/build-rpi-image.sh \
+            --model aarch64 --edition "$EDITION" --size "$SIZE"
+
+      - name: Compress and checksum
+        working-directory: build/out
+        run: |
+          for img in *.img; do
+            [ -f "$img" ] || continue
+            xz -T0 -9 "$img"
+            sha256sum "${img}.xz" > "${img}.xz.sha256"
+            sha512sum "${img}.xz" > "${img}.xz.sha512"
+          done
+          ls -lh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zephyros-rpi-${{ github.event.inputs.edition || 'core' }}
+          path: |
+            build/out/*.img.xz
+            build/out/*.img.xz.sha256
+            build/out/*.img.xz.sha512
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Attach to Release (tag pushes only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/out/*.img.xz
+            build/out/*.img.xz.sha256
+            build/out/*.img.xz.sha512
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

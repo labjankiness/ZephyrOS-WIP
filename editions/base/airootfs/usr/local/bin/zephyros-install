@@ -498,6 +498,32 @@ HOSTS
         # Phase 5: firewall (default-deny inbound). Ruleset shipped at /etc/nftables.conf.
         arch-chroot "$MOUNT_DIR" systemctl enable nftables.service >> "$LOG" 2>&1 || true
 
+        # Hardened edition: enable the security services its packages ship.
+        if [ "${EDITION_NAME:-}" = "hardened" ]; then
+            for svc in apparmor.service auditd.service usbguard.service fail2ban.service; do
+                arch-chroot "$MOUNT_DIR" systemctl enable "$svc" >> "$LOG" 2>&1 || true
+            done
+            # AppArmor + landlock + lockdown LSM stack on the kernel cmdline.
+            sed -i 's|^\(GRUB_CMDLINE_LINUX_DEFAULT=".*\)"|\1 lsm=landlock,lockdown,yama,integrity,apparmor,bpf"|' \
+                "$MOUNT_DIR/etc/default/grub"
+            # Make GRUB remember the user's choice; then point the saved default
+            # at the linux-hardened entry by grepping the generated grub.cfg.
+            # Brittle to grub layout changes, so we fall through to a no-op if
+            # the entry isn't found — the user can still pick it manually.
+            sed -i 's|^GRUB_DEFAULT=.*|GRUB_DEFAULT=saved|' "$MOUNT_DIR/etc/default/grub"
+            grep -q '^GRUB_SAVEDEFAULT=' "$MOUNT_DIR/etc/default/grub" \
+                || echo 'GRUB_SAVEDEFAULT=true' >> "$MOUNT_DIR/etc/default/grub"
+            arch-chroot "$MOUNT_DIR" grub-mkconfig -o /boot/grub/grub.cfg >> "$LOG" 2>&1 || true
+            HARDENED_ENTRY=$(awk -F\' '/^[[:space:]]*menuentry / && /linux-hardened/ {print $2; exit}' \
+                "$MOUNT_DIR/boot/grub/grub.cfg" 2>/dev/null || true)
+            if [ -n "$HARDENED_ENTRY" ]; then
+                arch-chroot "$MOUNT_DIR" grub-set-default "$HARDENED_ENTRY" >> "$LOG" 2>&1 || true
+                log "GRUB default set to: $HARDENED_ENTRY"
+            else
+                log "linux-hardened entry not found in grub.cfg; default left unchanged"
+            fi
+        fi
+
         echo "75"; echo "XXX"; echo "Copying edition configuration..."; echo "XXX"
         # Copy edition config
         if [ -f "$CONF" ]; then

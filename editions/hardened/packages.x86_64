@@ -1,0 +1,134 @@
+# =============================================================================
+# ZephyrOS Hardened Edition — additional packages
+#
+# This edition layers two things on top of the base:
+#   1. System hardening — a hardened kernel, MAC framework, audit, USB
+#      control, sandboxing, host-IDS, integrity checks.
+#   2. Offensive / DFIR tooling — the practical Arch-repo subset of a
+#      pentest/SOC kit. Heavy AUR-only tools (Metasploit, Burp Suite Pro,
+#      Ghidra) are documented as optional manual installs to keep the
+#      ISO build reliable.
+# =============================================================================
+
+# --- Hardened kernel (coexists with `linux` from base; GRUB shows both) ---
+linux-hardened
+linux-hardened-headers
+
+# --- Mandatory access control ---
+apparmor
+
+# --- Audit framework ---
+audit
+
+# --- USB device control ---
+usbguard
+
+# --- Process sandboxing ---
+firejail
+bubblewrap
+
+# --- Host intrusion detection / integrity ---
+aide
+rkhunter
+
+# --- System auditor / lockdown helper ---
+lynis
+
+# --- Anti-malware (signatures need updating post-install) ---
+clamav
+
+# --- Brute-force protection ---
+fail2ban
+
+# --- Hardened memory allocator (LD_PRELOAD candidate) ---
+# hardened_malloc lives in AUR; see HARDENING.md for the opt-in steps.
+
+# === Pentest / SOC tooling ===
+
+# --- Network analysis & recon ---
+wireshark-qt
+tcpdump
+nmap
+masscan
+hping
+mtr
+arp-scan
+whois
+traceroute
+bind-tools
+net-tools
+inetutils
+ipcalc
+ldns
+sslscan
+
+# --- Wireless / RF ---
+aircrack-ng
+reaver
+hostapd
+
+# --- Web testing ---
+nikto
+sqlmap
+gobuster
+ffuf
+httpie
+curl
+wget
+
+# --- Credentials / cracking ---
+hashcat
+john
+hydra
+medusa
+chntpw
+
+# --- Reverse engineering / RE primer ---
+radare2
+gdb
+ltrace
+strace
+binwalk
+foremost
+hexedit
+file
+perl-image-exiftool
+
+# --- Forensics ---
+sleuthkit
+ddrescue
+testdisk
+
+# --- Container / VM forensics surface ---
+qemu-base
+libvirt
+virt-manager
+
+# --- Crypto / VPN client ---
+openssh
+openvpn
+wireguard-tools
+gnupg
+
+# --- Shell / scripting ---
+python
+python-pip
+tmux
+htop
+jq
+# pwntools: pip-install in a venv post-boot (not in official repos)
+
+# --- Editors / git ---
+neovim
+git
+
+# --- File search / nav ---
+ripgrep
+fd
+
+# --- Browser (separate from default sandbox usage) ---
+firefox
+
+# --- Screenshot for incident reports ---
+grim
+slurp

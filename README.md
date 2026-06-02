@@ -4,7 +4,7 @@
 
 A minimal, modern Arch-based Linux distribution with a Wayfire Wayland compositor and UEFI Secure Boot support. Inspired by the Windows 11 aesthetic — centered taskbar, frosted launcher, clean animations — without the bloat.
 
-Ships in **5 editions**, each bundling a locally-hosted AI model via Ollama tailored to a specific use case.
+Ships in **6 editions**, each bundling a locally-hosted AI model via Ollama tailored to a specific use case.
 
 ## Editions
 
@@ -15,6 +15,7 @@ Ships in **5 editions**, each bundling a locally-hosted AI model via Ollama tail
 | **Dev** | Developers | DeepSeek Coder V2 16B Lite | 16 GB | Neovim, Helix, Docker, Git, 6 languages |
 | **SOC** | Security analysts | Llama 3.1 8B | 16 GB | Wireshark, nmap, tcpdump, AI triage |
 | **Lite** | Low-end hardware | SmolLM2 1.7B | 4 GB | Mousepad, Midori, minimal footprint |
+| **Hardened** | SOC + offensive security | Llama 3.1 8B | 16 GB | linux-hardened, AppArmor, USBGuard, audit, hashcat, sqlmap, radare2, sleuthkit |
 
 All editions share the same base: Wayfire desktop, Secure Boot, Ollama runtime. The AI model is pulled automatically on first boot.
 

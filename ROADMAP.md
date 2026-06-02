@@ -169,6 +169,35 @@ Still open:
 - Update notifier + rollback tooling.
 - Bare-metal verification of the encrypted-boot path.
 
+## Phase 5.5 — Hardened edition + ARM port [In progress]
+
+Goal: expand the surface area of who can use ZephyrOS — security teams that
+need a locked-down workstation, and Raspberry Pi owners who want the same
+desktop on small ARM hardware.
+
+What landed:
+
+- **Hardened edition** (`editions/hardened/`): `linux-hardened`, AppArmor,
+  audit, USBGuard, firejail, AIDE, lynis, fail2ban; KSPP-style sysctls;
+  legacy/risky module blacklist; a curated pentest/DFIR toolkit from
+  official repos only (nmap/masscan, hashcat/john, radare2/binwalk,
+  sleuthkit/ddrescue, sqlmap/ffuf, …). Installer enables the security
+  services and sets the hardened kernel as GRUB default on this edition.
+  See [HARDENING.md](HARDENING.md).
+- **aarch64 Raspberry Pi image** (`build/build-rpi-image.sh`): cross-build
+  via Arch Linux ARM + qemu-user-static, producing a partitioned
+  `.img` for Pi 3/4/5. CI workflow `.github/workflows/build-rpi.yml`
+  builds on `ubuntu-latest`, compresses with xz, checksums, and attaches
+  to tagged releases.
+
+Still open:
+
+- Verifying both on real hardware (laptop install for the hardened edition;
+  Pi 4/5 boot for the ARM image).
+- aarch64 Ollama packaging (currently documented as a post-install `curl`).
+- Replacing the default `zephyros:zephyros` Pi credentials with first-boot
+  setup, matching the desktop installer's flow.
+
 ## Phase 6 — Daily-driver polish [Planned]
 
 Goal: remove the "where is X?" friction so ZephyrOS can be someone's main OS.
